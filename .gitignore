@@ -1,0 +1,16 @@
+.env
+.env.*
+/vendor/
+/node_modules/
+*.zip
+__MACOSX
+/public/storage
+/storage/*.key
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+.DS_Store
+node_modules
+/bootstrap/cache/*.php
+/bootstrap/cache/*.php

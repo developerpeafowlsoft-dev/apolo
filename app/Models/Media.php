@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
+
+class Media extends Model
+{
+    use HasFactory;
+
+    protected $guarded = ['id'];
+
+//    public function srcUrl(): Attribute
+//    {
+//        $image = asset('default/default.jpg');
+//
+//        if (Storage::exists($this->src)) {
+//            $image = Storage::url($this->src);
+//        }
+//
+//        return Attribute::make(
+//            get: fn () => $image,
+//        );
+//    }
+
+    public function srcUrl(): Attribute
+    {
+        $image = asset('default/default.jpg');
+
+        if (
+            $this->src &&
+            Storage::disk('public')->exists($this->src) &&
+            file_exists(public_path('storage'))
+        ) {
+            $image = Storage::url($this->src);
+        }
+
+        return Attribute::make(
+            get: fn () => $image,
+        );
+    }
+}
