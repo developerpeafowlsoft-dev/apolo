@@ -86,6 +86,10 @@ class CheckPermission
             if (str_ends_with($requestName, '.gallery.create')) {
                 $requestName = str_replace('.gallery.create', '.gallery.store', $requestName);
             }
+
+            if (str_ends_with($requestName, '.hero-toggle')) {
+                $requestName = str_replace('.hero-toggle', '.toggle', $requestName);
+            }
         }
 
         if (in_array($requestName, $allPermissions)) {

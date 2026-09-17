@@ -32,42 +32,51 @@
         @csrf
         @method('PUT')
 
-        <!-- 2-Column Compact Dashboard Grid Layout -->
-        <div class="row g-3">
+        <!-- SECTION 1: Basic Information & Categorization (Top Balanced Row) -->
+        <div class="row g-3 mb-3">
             
-            <!-- LEFT COLUMN (8 cols): Primary Info, Price Variants, Delivery & SEO -->
+            <!-- LEFT (col-lg-8): 1. Basic Product Information -->
             <div class="col-lg-8">
-                
-                <!-- 1. Basic Product Information -->
-                <div class="card border-0 shadow-2xs rounded-3 bg-white mb-3">
-                    <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center gap-2">
-                        <i class="bi bi-box-seam text-primary fs-6"></i>
-                        <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('1. Basic Information') }}</h6>
+                <div class="card border-0 shadow-2xs rounded-3 bg-white h-100">
+                    <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-box-seam text-primary fs-6"></i>
+                            <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('1. Basic Information') }}</h6>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1 d-flex align-items-center gap-1.5 shadow-2xs" id="btn_open_ai_modal" style="font-size: 11.5px; font-weight: 600;">
+                            <i class="bi bi-stars text-warning fs-6"></i>
+                            <span>{{ __('AI Data Generator') }}</span>
+                        </button>
                     </div>
-                    <div class="card-body p-3">
+                    <div class="card-body p-3 d-flex flex-column">
                         <div class="mb-3">
                             <x-input label="Product Name" name="name" type="text" placeholder="Product Name" required="true"
                                 value="{{ $product->name }}" />
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-semibold text-dark small">
-                                {{ __('Short Description') }}
-                                <span class="text-danger">*</span>
-                            </label>
-                            <textarea name="short_description" class="form-control rounded-2" rows="2" placeholder="{{ __('Short Description') }}">{{ old('short_description') ?? $product->short_description }}</textarea>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-semibold text-dark small m-0">
+                                    {{ __('Short Description') }}
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <small class="text-muted" id="edit_short_desc_counter" style="font-size: 11px;">
+                                    {{ mb_strlen(old('short_description') ?? $product->short_description ?? '') }} / 191
+                                </small>
+                            </div>
+                            <textarea required name="short_description" id="product_short_description" class="form-control rounded-2" rows="2" maxlength="191" placeholder="{{ __('Short Description') }}" oninput="$('#edit_short_desc_counter').text(this.value.length + ' / 191')">{{ old('short_description') ?? $product->short_description }}</textarea>
                             @error('short_description')
                                 <p class="text-danger small mt-1 mb-0">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        <div class="mb-1">
+                        <div class="mb-1 flex-grow-1">
                             <label class="form-label fw-semibold text-dark small">
                                 {{ __('Description') }}
                                 <span class="text-danger">*</span>
                             </label>
                             <div class="border rounded-2 overflow-hidden bg-white">
-                                <div id="editor" style="min-height: 140px; max-height: 350px; overflow-y: auto">
+                                <div id="editor" style="min-height: 140px; max-height: 280px; overflow-y: auto">
                                     {!! old('description') ?? $product->description !!}
                                 </div>
                             </div>
@@ -79,220 +88,14 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- 2. Price Information & Inward Product Variants Table -->
-                <div class="card border-0 shadow-2xs rounded-3 bg-white mb-3">
-                    <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-currency-rupee text-primary fs-6"></i>
-                            <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('2. Price & Inward Variant Stock') }}</h6>
-                        </div>
-                        @if($inwardProductData->isNotEmpty())
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill" style="font-size: 11px;">
-                                {{ $inwardProductData->count() }} {{ $inwardProductData->count() == 1 ? __('Variant') : __('Variants') }}
-                            </span>
-                        @endif
-                    </div>
-                    <div class="card-body p-3">
-
-                        <!-- Hidden fields kept for backend structure -->
-                        <div class="row g-2 d-none">
-                            <div class="col-6 col-md-3">
-                                <x-input type="text" name="buy_price" label="Buying Price" placeholder="Buying Price"
-                                    required="true" onlyNumber="true" :value="$product->buy_price" />
-                            </div>
-
-                            <div class="col-6 col-md-3">
-                                <x-input type="text" name="price" label="Selling Price" placeholder="Selling Price"
-                                    required="true" onlyNumber="true" :value="$product->price" />
-                            </div>
-
-                            <div class="col-6 col-md-3">
-                                <x-input type="text" name="discount_price" label="Discount Price"
-                                    placeholder="Discount Price" onlyNumber="true" :value="$product->discount_price" />
-                            </div>
-
-                            <div class="col-6 col-md-3">
-                                <x-input type="text" name="quantity" label="Current Stock Quantity"
-                                    placeholder="Current Stock Quantity" onlyNumber="true" :value="$product->quantity" />
-                            </div>
-
-                            <div class="col-6 col-md-3">
-                                <x-input type="text" onlyNumber="true" name="min_order_quantity"
-                                    label="Minimum Order Quantity" placeholder="Minimum Order Quantity"
-                                    :value="$product->min_order_quantity" />
-                            </div>
-                        </div>
-
-                        <!-- Inward Product Variants Table -->
-                        @if($inwardProductData->isNotEmpty())
-                            <div class="border rounded-3 overflow-hidden" id="inwardTableBox">
-                                <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
-                                    <table class="table table-hover align-middle mb-0" style="font-size: 12.5px;">
-                                        <thead class="table-light border-bottom sticky-top" style="z-index: 1;">
-                                            <tr>
-                                                <th class="text-center" style="width: 40px;">{{ __('SL') }}</th>
-                                                <th style="min-width: 90px;">{{ __('Design No') }}</th>
-                                                <th style="min-width: 90px;">{{ __('Color') }}</th>
-                                                <th style="min-width: 70px;">{{ __('Size') }}</th>
-                                                <th class="text-center" style="min-width: 60px;">{{ __('Qty') }}</th>
-                                                <th class="text-end" style="min-width: 90px;">{{ __('Purc Rate') }}</th>
-                                                <th class="text-end" style="min-width: 100px;">{{ __('Amount') }}</th>
-                                                <th class="text-center" style="min-width: 70px;">{{ __('Disc (%)') }}</th>
-                                                <th class="text-end" style="min-width: 90px;">{{ __('MRP') }}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @php
-                                                $totalQty = 0;
-                                                $totalAmount = 0;
-                                                $totalMrp = 0;
-                                            @endphp
-                                            @foreach($inwardProductData as $index => $item)
-                                                @php
-                                                    $totalQty += $item->qty;
-                                                    $totalAmount += $item->amount;
-                                                    $totalMrp += $item->mrp;
-                                                @endphp
-                                                <tr>
-                                                    <td class="text-center text-secondary fw-semibold">{{ $loop->iteration }}</td>
-                                                    <td>
-                                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle font-monospace px-1.5 py-0.5" style="font-size: 11px;">{{ $item->design_no }}</span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-info-subtle text-info border border-info-subtle px-1.5 py-0.5" style="font-size: 11px;">{{ $item->colors }}</span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5" style="font-size: 11px;">{{ $item->sizes }}</span>
-                                                    </td>
-                                                    <td class="text-center font-monospace fw-bold text-dark">{{ $item->qty }}</td>
-                                                    <td class="text-end font-monospace text-primary fw-medium">₹{{ number_format($item->purc_rate, 2) }}</td>
-                                                    <td class="text-end font-monospace fw-bold text-dark">₹{{ number_format($item->amount, 2) }}</td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5" style="font-size: 11px;">{{ $item->disc_percent }}%</span>
-                                                    </td>
-                                                    <td class="text-end font-monospace text-success fw-bold">₹{{ number_format($item->mrp, 2) }}</td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                        <tfoot class="table-light border-top fw-bold sticky-bottom" style="font-size: 12.5px; z-index: 1;">
-                                            <tr>
-                                                <td colspan="4" class="text-end text-muted">{{ __('Total:') }}</td>
-                                                <td class="text-center font-monospace text-dark fs-6">{{ $totalQty }}</td>
-                                                <td class="text-end text-muted">-</td>
-                                                <td class="text-end font-monospace text-dark fs-6">₹{{ number_format($totalAmount, 2) }}</td>
-                                                <td></td>
-                                                <td class="text-end font-monospace text-success fs-6">₹{{ number_format($totalMrp, 2) }}</td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-                        @else
-                            <div class="text-center py-3 text-muted small">
-                                <i class="bi bi-info-circle me-1"></i> {{ __('No inward purchase variants linked to this product.') }}
-                            </div>
-                        @endif
-
-                    </div>
-                </div>
-
-                @php
-                    $hsnCode = $product->hsnMaster?->hsn_code ?? $product->hsn ?? $product->hsn_code ?? null;
-                    if (!$hsnCode && isset($inwardProductData) && $inwardProductData->isNotEmpty()) {
-                        $hsnCode = $inwardProductData->first()?->hsnMaster?->hsn_code ?? null;
-                    }
-                @endphp
-                <!-- 3. Delivery & Dimensions -->
-                <div class="card border-0 shadow-2xs rounded-3 bg-white mb-3">
-                    <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-truck text-primary fs-6"></i>
-                            <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('3. Delivery Dimensions') }}</h6>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-2 px-2.5 py-1 text-decoration-none d-inline-flex align-items-center gap-1 font-size-12 fw-semibold" id="btn-estimate-dimensions" onclick="estimateDimensions()">
-                            <i class="bi bi-check-lg"></i>
-                            <span>{{ __('Estimate') }}</span>
-                        </button>
-                    </div>
-                    <div class="card-body p-3">
-                        <div class="row g-2">
-                            <div class="col-sm-6 col-md-3">
-                                <x-input type="text" name="length" label="Length (cm)" placeholder="Length"
-                                         required="true" onlyNumber="true" :value="$product->length" />
-                            </div>
-
-                            <div class="col-sm-6 col-md-3">
-                                <x-input type="text" name="width" label="Width (cm)" placeholder="Width"
-                                         required="true" onlyNumber="true" :value="$product->width" />
-                            </div>
-
-                            <div class="col-sm-6 col-md-3">
-                                <x-input type="text" name="height" label="Height (cm)" placeholder="Height"
-                                         required="true" onlyNumber="true" :value="$product->height"/>
-                            </div>
-
-                            <div class="col-sm-6 col-md-3">
-                                <x-input type="text" name="weight" label="Weight (kg)" placeholder="Weight"
-                                         required="true" onlyNumber="true" :value="$product->weight" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 4. SEO Information -->
-                <div class="card border-0 shadow-2xs rounded-3 bg-white mb-3">
-                    <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center gap-2">
-                        <i class="bi bi-search text-primary fs-6"></i>
-                        <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('4. SEO & Search Engine Optimization') }}</h6>
-                    </div>
-                    <div class="card-body p-3">
-                        <div class="mb-3">
-                            <label for="meta_title" class="form-label fw-semibold text-dark small mb-1">
-                                {{ __('Meta Title') }}
-                            </label>
-                            <input type="text" name="meta_title" id="meta_title" placeholder="{{ __('Meta Title') }}"
-                                class="form-control rounded-2" value="{{ old('meta_title', $product->meta_title) }}" />
-                            @error('meta_title')
-                                <p class="text-danger small mt-1 mb-0">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="meta_description" class="form-label fw-semibold text-dark small mb-1">
-                                {{ __('Meta Description') }}
-                            </label>
-                            <textarea name="meta_description" id="meta_description" placeholder="{{ __('Meta Description') }}" class="form-control rounded-2" rows="2">{{ old('meta_description', $product->meta_description) }}</textarea>
-                            @error('meta_description')
-                                <p class="text-danger small mt-1 mb-0">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="mb-1">
-                            <label for="tags" class="form-label fw-semibold text-dark small mb-1">@lang('Meta Keywords')</label>
-                            <select id="tags" name="meta_keywords[]" class="form-control selectTags w-100" multiple style="width: 100%;">
-                                @foreach (old('meta_keywords', $metaKeywords) as $keyword)
-                                    <option value="{{ $keyword }}" selected>{{ $keyword }}</option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>@lang('Write keywords and Press enter to add new one')</small>
-                            @error('meta_keywords')
-                                <p class="text-danger small mt-1 mb-0">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
-
             </div>
 
-            <!-- RIGHT COLUMN (4 cols): Categorization, Media Photos & Video -->
+            <!-- RIGHT (col-lg-4): 2. Categorization & SKU -->
             <div class="col-lg-4">
-                
-                <!-- 5. Categorization & Product Code -->
-                <div class="card border-0 shadow-2xs rounded-3 bg-white mb-3">
+                <div class="card border-0 shadow-2xs rounded-3 bg-white h-100">
                     <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center gap-2">
                         <i class="bi bi-sliders text-primary fs-6"></i>
-                        <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('5. Categorization & SKU') }}</h6>
+                        <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('2. Categorization & SKU') }}</h6>
                     </div>
                     <div class="card-body p-3">
                         
@@ -363,7 +166,7 @@
                         </div>
 
                         <!-- Brand & Unit side by side -->
-                        <div class="row g-2 mb-3">
+                        <div class="row g-2">
                             <div class="col-6">
                                 <x-select label="Select Brand" name="brand">
                                     <option value="">
@@ -394,12 +197,396 @@
 
                     </div>
                 </div>
+            </div>
 
-                <!-- 6. Photos & Thumbnails -->
+        </div>
+
+        @php
+            $referenceMrp = (float)($product->mrp ?: ($inwardProductData->first()?->mrp ?? $product->price));
+            $currOnlineDisc = (float)($product->online_discount_percent ?? 0);
+            $currOnlinePrice = $currOnlineDisc > 0 ? round($referenceMrp - ($referenceMrp * $currOnlineDisc / 100), 2) : $referenceMrp;
+        @endphp
+
+        <!-- SECTION 2: Pricing & Inward Variant Stock (Full Width 12 cols) -->
+        <div class="row g-3 mb-3">
+            <div class="col-12">
+                <div class="card border-0 shadow-2xs rounded-3 bg-white">
+                    <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-currency-rupee text-primary fs-6"></i>
+                            <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('3. Price & Inward Variant Stock') }}</h6>
+                        </div>
+                        @if($inwardProductData->isNotEmpty())
+                            @php
+                                $headerOnlineCount = $inwardProductData->where('is_online_product', true)->count();
+                            @endphp
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill font-monospace" style="font-size: 11.5px;">
+                                    {{ $inwardProductData->count() }} {{ $inwardProductData->count() == 1 ? __('Variant') : __('Variants') }}
+                                </span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill font-monospace" id="header_online_badge" style="font-size: 11.5px;">
+                                    <i class="bi bi-globe2 me-1"></i><span id="header_online_count">{{ $headerOnlineCount }}</span> / {{ $inwardProductData->count() }} {{ __('Online') }}
+                                </span>
+                            </div>
+                        @endif
+                    </div>
+                    <div class="card-body p-3">
+
+                        <!-- Hidden fields kept for backend structure -->
+                        <div class="row g-2 d-none">
+                            <div class="col-6 col-md-3">
+                                <x-input type="text" name="buy_price" label="Buying Price" placeholder="Buying Price"
+                                    required="true" onlyNumber="true" :value="$product->buy_price" />
+                            </div>
+
+                            <div class="col-6 col-md-3">
+                                <x-input type="text" name="price" label="Selling Price" placeholder="Selling Price"
+                                    required="true" onlyNumber="true" :value="$product->price" />
+                            </div>
+
+                            <div class="col-6 col-md-3">
+                                <x-input type="text" name="discount_price" label="Discount Price"
+                                    placeholder="Discount Price" onlyNumber="true" :value="$product->discount_price" />
+                            </div>
+
+                            <div class="col-6 col-md-3">
+                                <x-input type="text" name="quantity" label="Current Stock Quantity"
+                                    placeholder="Current Stock Quantity" onlyNumber="true" :value="$product->quantity" />
+                            </div>
+
+                            <div class="col-6 col-md-3">
+                                <x-input type="text" name="min_order_quantity"
+                                    label="Minimum Order Quantity" placeholder="Minimum Order Quantity"
+                                    :value="$product->min_order_quantity" />
+                            </div>
+                        </div>
+
+                        <!-- Online Promotional Discount & POS Safe Protection Toolbar -->
+                        <div class="bg-light-subtle border rounded-3 p-3 mb-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary text-white rounded-circle p-1 d-inline-flex align-items-center justify-content-center" style="width: 22px; height: 22px;">
+                                        <i class="bi bi-percent" style="font-size: 11px;"></i>
+                                    </span>
+                                    <span class="fw-bold text-dark" style="font-size: 13px;">{{ __('Online Promotional Discount & Pricing Control') }}</span>
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-0.5 rounded-pill" style="font-size: 10.5px;">
+                                        <i class="bi bi-globe2 me-1"></i>{{ __('Web & Mobile App Only') }}
+                                    </span>
+                                </div>
+                                <div class="text-muted small d-flex align-items-center gap-1.5" style="font-size: 12px;">
+                                    <i class="bi bi-shield-check text-success fs-6"></i>
+                                    <span><strong>{{ __('POS Safe Protection:') }}</strong> {{ __('In-store POS billing strictly charges the physical full MRP (₹' . number_format($referenceMrp, 2) . ').') }}</span>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 align-items-center">
+                                <div class="col-12 col-md-4 col-lg-3">
+                                    <label class="form-label text-dark fw-semibold mb-1" style="font-size: 12px;">{{ __('In-Store / Base MRP') }}</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white text-muted">₹</span>
+                                        <input type="text" id="base_mrp_display" class="form-control form-control-sm bg-white fw-bold font-monospace" value="{{ number_format($referenceMrp, 2) }}" readonly>
+                                    </div>
+                                    <small class="text-muted" style="font-size: 11px;">{{ __('Physical POS billing rate') }}</small>
+                                </div>
+
+                                <div class="col-12 col-md-4 col-lg-4">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <label for="online_discount_percent" class="form-label text-dark fw-semibold m-0" style="font-size: 12px;">
+                                            {{ __('Online Discount (%)') }}
+                                        </label>
+                                        @if($inwardProductData->isNotEmpty())
+                                            <button type="button" class="btn btn-2xs btn-outline-primary py-0 px-2 rounded fw-semibold" id="btn_apply_discount_to_all" style="font-size: 11px;" title="{{ __('Apply this discount % to all variants below') }}">
+                                                <i class="bi bi-arrow-down-circle me-1"></i>{{ __('Apply to All Variants') }}
+                                            </button>
+                                        @endif
+                                    </div>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="0.01" min="0" max="99.99" name="online_discount_percent" id="online_discount_percent" class="form-control form-control-sm font-monospace fw-semibold" placeholder="0" value="{{ old('online_discount_percent', $product->online_discount_percent ?? 0) }}">
+                                        <span class="input-group-text bg-white fw-bold">%</span>
+                                    </div>
+                                    <small class="text-muted" style="font-size: 11px;">{{ __('Set base discount or click "Apply to All Variants"') }}</small>
+                                </div>
+
+                                <div class="col-12 col-md-4 col-lg-3">
+                                    <label class="form-label text-dark fw-semibold mb-1" style="font-size: 12px;">{{ __('Online Customer Selling Price') }}</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-primary-subtle text-primary fw-bold">₹</span>
+                                        <input type="text" id="online_selling_price_preview" class="form-control form-control-sm bg-white text-primary fw-bold font-monospace" value="{{ number_format($currOnlinePrice, 2) }}" readonly>
+                                    </div>
+                                    <small class="text-muted" style="font-size: 11px;" id="online_disc_label">
+                                        @if($currOnlineDisc > 0)
+                                            <span class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>{{ $currOnlineDisc }}% {{ __('OFF online price') }}</span>
+                                        @else
+                                            <span>{{ __('No discount (Selling at full MRP)') }}</span>
+                                        @endif
+                                    </small>
+                                </div>
+
+                                <div class="col-12 col-lg-2 text-lg-end d-none d-lg-block">
+                                    <div class="p-2 border rounded-2 bg-white text-center">
+                                        <div class="text-muted small" style="font-size: 10.5px;">{{ __('Online Channel') }}</div>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill font-monospace" style="font-size: 11px;">
+                                            <i class="bi bi-shield-check me-1"></i>POS Protected
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Inward Product Variants Table (Full Width!) -->
+                        @if($inwardProductData->isNotEmpty())
+                            <div class="border rounded-3 overflow-hidden shadow-2xs" id="inwardTableBox">
+                                <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                                    <table class="table table-hover align-middle mb-0 table-variant-stock" style="font-size: 12.5px;">
+                                        <thead class="table-light border-bottom sticky-top" style="z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+                                            <tr class="align-middle">
+                                                <th class="text-center" style="width: 45px; white-space: nowrap;">{{ __('SL') }}</th>
+                                                <th style="min-width: 90px; white-space: nowrap;">{{ __('Design No') }}</th>
+                                                <th style="min-width: 90px; white-space: nowrap;">{{ __('Color') }}</th>
+                                                <th style="min-width: 70px; white-space: nowrap;">{{ __('Size') }}</th>
+                                                <th class="text-center" style="min-width: 60px; white-space: nowrap;">{{ __('Qty') }}</th>
+                                                <th class="text-end" style="min-width: 95px; white-space: nowrap;">{{ __('Purc Rate') }}</th>
+                                                <th class="text-end" style="min-width: 100px; white-space: nowrap;">{{ __('Amount') }}</th>
+                                                <th class="text-end" style="min-width: 105px; white-space: nowrap;">{{ __('Physical MRP') }}</th>
+                                                <th class="text-center" style="min-width: 120px; white-space: nowrap;">
+                                                    <span class="text-primary fw-bold">{{ __('Online Disc (%)') }}</span>
+                                                </th>
+                                                <th class="text-end" style="min-width: 110px; white-space: nowrap;">
+                                                    <span class="text-primary fw-bold">{{ __('Online Price') }}</span>
+                                                </th>
+                                                <th class="text-center" style="min-width: 135px; white-space: nowrap;">
+                                                    <span class="text-success fw-bold"><i class="bi bi-globe2 me-1"></i>{{ __('Sell Online') }}</span>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php
+                                                $totalQty = 0;
+                                                $totalPurcRate = 0;
+                                                $totalAmount = 0;
+                                                $totalMrp = 0;
+                                                $totalOnlinePrice = 0;
+                                                $totalOnlineCount = 0;
+                                            @endphp
+                                            @foreach($inwardProductData as $index => $item)
+                                                @php
+                                                    $isItemOnline = (bool)($item->is_online_product ?? false);
+                                                    $itemOnlineDisc = (float)($item->online_discount_percent ?? 0);
+                                                    $itemOnlinePrice = $itemOnlineDisc > 0 ? round($item->mrp - ($item->mrp * $itemOnlineDisc / 100), 2) : $item->mrp;
+                                                    if ($isItemOnline) {
+                                                        $totalOnlineCount++;
+                                                        $totalQty += $item->qty;
+                                                        $totalPurcRate += $item->purc_rate;
+                                                        $totalAmount += $item->amount;
+                                                        $totalMrp += $item->mrp;
+                                                        $totalOnlinePrice += $itemOnlinePrice;
+                                                    }
+                                                @endphp
+                                                <tr data-inward-id="{{ $item->inward_product_id }}" data-mrp="{{ $item->mrp }}" class="align-middle variant-row {{ !$isItemOnline ? 'variant-offline' : '' }}">
+                                                    <td class="text-center text-secondary fw-semibold">{{ $loop->iteration }}</td>
+                                                    <td>
+                                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle font-monospace px-2 py-0.5" style="font-size: 11px;">{{ $item->design_no }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-0.5" style="font-size: 11px;">{{ $item->colors }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5" style="font-size: 11px;">{{ $item->sizes }}</span>
+                                                    </td>
+                                                    <td class="text-center font-monospace fw-bold text-dark variant-qty">{{ $item->qty }}</td>
+                                                    <td class="text-end font-monospace text-primary fw-medium variant-purc-rate" data-val="{{ $item->purc_rate }}">₹{{ number_format($item->purc_rate, 2) }}</td>
+                                                    <td class="text-end font-monospace fw-bold text-dark variant-amount" data-val="{{ $item->amount }}">₹{{ number_format($item->amount, 2) }}</td>
+                                                    <td class="text-end font-monospace text-success fw-bold variant-mrp" data-val="{{ $item->mrp }}">₹{{ number_format($item->mrp, 2) }}</td>
+                                                    <td class="text-center">
+                                                        <div class="input-group input-group-sm mx-auto shadow-2xs rounded-2" style="width: 105px;">
+                                                            <input type="number" 
+                                                                step="0.01" 
+                                                                min="0" 
+                                                                max="99.99" 
+                                                                name="variant_online_discount[{{ $item->inward_product_id }}]" 
+                                                                class="form-control form-control-sm text-center font-monospace fw-bold variant-online-disc-input py-1 px-1 border-primary-subtle" 
+                                                                data-inward-id="{{ $item->inward_product_id }}" 
+                                                                data-mrp="{{ $item->mrp }}" 
+                                                                value="{{ number_format($itemOnlineDisc, 2, '.', '') }}" 
+                                                                placeholder="0.00" 
+                                                                style="font-size: 12px; height: 30px;">
+                                                            <span class="input-group-text bg-light-subtle px-1.5 py-0.5 text-primary fw-bold" style="font-size: 11px;">%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-end font-monospace fw-bold variant-online-price-display {{ $itemOnlineDisc > 0 ? 'text-primary' : 'text-secondary' }}" data-price="{{ $itemOnlinePrice }}" style="font-size: 13px;">
+                                                        ₹{{ number_format($itemOnlinePrice, 2) }}
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <div class="d-inline-flex align-items-center justify-content-center" style="gap: 8px;">
+                                                            <input type="hidden" name="variant_sell_online[{{ $item->inward_product_id }}]" value="{{ $isItemOnline ? '1' : '0' }}" class="variant-sell-online-hidden">
+                                                            <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                                                <input class="form-check-input variant-sell-online-switch cursor-pointer" 
+                                                                       type="checkbox" 
+                                                                       role="switch" 
+                                                                       id="switch_online_{{ $item->inward_product_id }}" 
+                                                                       data-inward-id="{{ $item->inward_product_id }}"
+                                                                       data-size="{{ $item->sizes }}"
+                                                                       data-color="{{ $item->colors }}"
+                                                                       {{ $isItemOnline ? 'checked' : '' }} 
+                                                                       style="width: 36px; height: 19px; cursor: pointer;">
+                                                            </div>
+                                                            <span class="badge {{ $isItemOnline ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle' }} variant-online-status-badge font-monospace px-2 py-0.5" style="font-size: 11px; min-width: 58px; text-align: center;">
+                                                                {{ $isItemOnline ? __('Online') : __('Offline') }}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                        <tfoot class="bg-light border-top border-2 border-secondary-subtle fw-bold sticky-bottom" style="font-size: 12.5px; z-index: 2;">
+                                            <tr class="align-middle">
+                                                <td colspan="4" class="text-end text-muted text-uppercase fw-bold pe-2" style="font-size: 11.5px; letter-spacing: 0.5px;">
+                                                    <i class="bi bi-calculator text-primary me-1"></i>{{ __('Total Sum:') }}
+                                                </td>
+                                                <td class="text-center font-monospace text-dark fs-6" id="total_qty_display">{{ $totalQty }}</td>
+                                                <td class="text-end font-monospace text-primary fw-bold" id="total_purc_rate_display" style="font-size: 13px;">₹{{ number_format($totalPurcRate, 2) }}</td>
+                                                <td class="text-end font-monospace text-dark fw-bold" id="total_amount_display" style="font-size: 13px;">₹{{ number_format($totalAmount, 2) }}</td>
+                                                <td class="text-end font-monospace text-success fw-bold" id="total_mrp_display" style="font-size: 13px;">₹{{ number_format($totalMrp, 2) }}</td>
+                                                <td class="text-center">
+                                                    @php
+                                                        $avgDisc = ($totalMrp > 0 && $totalOnlinePrice < $totalMrp) ? round((($totalMrp - $totalOnlinePrice) / $totalMrp) * 100, 1) : 0;
+                                                    @endphp
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-1.5 py-0.5" id="total_avg_disc_display" style="font-size: 11px;">
+                                                        Avg: {{ number_format($avgDisc, 1) }}%
+                                                    </span>
+                                                </td>
+                                                <td class="text-end font-monospace text-primary fw-bold fs-6" id="total_online_price_display">
+                                                    ₹{{ number_format($totalOnlinePrice, 2) }}
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace px-2 py-1" id="total_online_count_badge" style="font-size: 11px;">
+                                                        <span id="active_online_count">{{ $totalOnlineCount }}</span> / {{ $inwardProductData->count() }} Online
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        @else
+                            <div class="text-center py-3 text-muted small">
+                                <i class="bi bi-info-circle me-1"></i> {{ __('No inward purchase variants linked to this product.') }}
+                            </div>
+                        @endif
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @php
+            $hsnCode = $product->hsnMaster?->hsn_code ?? $product->hsn ?? $product->hsn_code ?? null;
+            if (!$hsnCode && isset($inwardProductData) && $inwardProductData->isNotEmpty()) {
+                $hsnCode = $inwardProductData->first()?->hsnMaster?->hsn_code ?? null;
+            }
+        @endphp
+
+        <!-- SECTION 3: Logistics, Media & SEO -->
+        <div class="row g-3 mb-3">
+            
+            <!-- LEFT (col-lg-7): Delivery Dimensions & SEO -->
+            <div class="col-lg-7">
+                
+                <!-- 4. Delivery & Dimensions -->
+                <div class="card border-0 shadow-2xs rounded-3 bg-white mb-3">
+                    <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-truck text-primary fs-6"></i>
+                            <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('4. Delivery Dimensions') }}</h6>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-2 px-2.5 py-1 text-decoration-none d-inline-flex align-items-center gap-1 font-size-12 fw-semibold" id="btn-estimate-dimensions" onclick="estimateDimensions()">
+                            <i class="bi bi-check-lg"></i>
+                            <span>{{ __('Estimate') }}</span>
+                        </button>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="row g-2">
+                            <div class="col-sm-6 col-md-3">
+                                <x-input type="text" name="length" label="Length (cm)" placeholder="Length"
+                                         onlyNumber="true" :value="$product->length" />
+                            </div>
+
+                            <div class="col-sm-6 col-md-3">
+                                <x-input type="text" name="width" label="Width (cm)" placeholder="Width"
+                                         onlyNumber="true" :value="$product->width" />
+                            </div>
+
+                            <div class="col-sm-6 col-md-3">
+                                <x-input type="text" name="height" label="Height (cm)" placeholder="Height"
+                                         onlyNumber="true" :value="$product->height"/>
+                            </div>
+
+                            <div class="col-sm-6 col-md-3">
+                                <x-input type="text" name="weight" label="Weight (kg)" placeholder="Weight"
+                                         onlyNumber="true" :value="$product->weight" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. SEO Information -->
                 <div class="card border-0 shadow-2xs rounded-3 bg-white mb-3">
                     <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center gap-2">
-                        <i class="bi bi-images text-primary fs-6"></i>
-                        <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('6. Photos & Gallery') }}</h6>
+                        <i class="bi bi-search text-primary fs-6"></i>
+                        <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('5. SEO & Search Engine Optimization') }}</h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="mb-3">
+                            <label for="meta_title" class="form-label fw-semibold text-dark small mb-1">
+                                {{ __('Meta Title') }}
+                            </label>
+                            <input type="text" name="meta_title" id="meta_title" placeholder="{{ __('Meta Title') }}"
+                                class="form-control rounded-2" value="{{ old('meta_title', $product->meta_title) }}" />
+                            @error('meta_title')
+                                <p class="text-danger small mt-1 mb-0">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="meta_description" class="form-label fw-semibold text-dark small mb-1">
+                                {{ __('Meta Description') }}
+                            </label>
+                            <textarea name="meta_description" id="meta_description" placeholder="{{ __('Meta Description') }}" class="form-control rounded-2" rows="2">{{ old('meta_description', $product->meta_description) }}</textarea>
+                            @error('meta_description')
+                                <p class="text-danger small mt-1 mb-0">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="mb-1">
+                            <label for="tags" class="form-label fw-semibold text-dark small mb-1">@lang('Meta Keywords')</label>
+                            <select id="tags" name="meta_keywords[]" class="form-control selectTags w-100" multiple style="width: 100%;">
+                                @foreach (old('meta_keywords', $metaKeywords) as $keyword)
+                                    <option value="{{ $keyword }}" selected>{{ $keyword }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>@lang('Write keywords and Press enter to add new one')</small>
+                            @error('meta_keywords')
+                                <p class="text-danger small mt-1 mb-0">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT (col-lg-5): Photos, Gallery & Video -->
+            <div class="col-lg-5">
+                
+                <!-- 6. Photos & Thumbnails -->
+                <div class="card border-0 shadow-2xs rounded-3 bg-white mb-3">
+                    <div class="card-header bg-light-subtle py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-images text-primary fs-6"></i>
+                            <h6 class="fw-bold text-dark m-0" style="font-size: 13.5px;">{{ __('6. Photos & Gallery') }}</h6>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1.5 shadow-2xs fw-semibold" style="font-size: 12px;" data-bs-toggle="modal" data-bs-target="#aiImageStudioModal">
+                            <i class="bi bi-stars text-primary"></i> {{ __('AI Image Studio') }}
+                        </button>
                     </div>
                     <div class="card-body p-3">
                         
@@ -431,7 +618,7 @@
                                 <p class="text-danger small mt-1 mb-1">{{ $message }}</p>
                             @enderror
 
-                            <div class="d-flex flex-wrap gap-2 mt-1" id="additionalElements">
+                            <div class="d-flex flex-wrap gap-2 pt-2" id="additionalElements">
                                 <!-- Previous additional thumbnails -->
                                 @foreach ($product->medias as $media)
                                     @php
@@ -443,12 +630,15 @@
 
                                     <div id="additionShow" class="position-relative">
                                         <label for="previousThumbnailShow{{ $media->id }}"
-                                            class="additionThumbnail cursor-pointer border rounded-3 p-1 bg-white shadow-2xs d-block" style="width: 75px; height: 75px;">
+                                            class="additionThumbnail cursor-pointer border rounded-3 p-1 bg-white shadow-2xs d-block position-relative" style="width: 75px; height: 75px; overflow: visible !important;">
                                             <img src="{{ $source }}" id="previewShow{{ $media->id }}"
                                                 alt="thumbnail" class="w-100 h-100 object-fit-cover rounded-2">
                                             <a href="{{ route('shop.product.remove.thumbnail', ['product' => $product->id, 'media' => $media->id]) }}"
-                                                class="delete btn btn-danger btn-sm rounded-circle p-0 position-absolute top-0 end-0 translate-middle shadow-sm" style="width: 20px; height: 20px; line-height: 18px;">
-                                                <i class="bi bi-x-lg small" style="font-size: 10px;"></i>
+                                                onclick="event.stopPropagation();"
+                                                class="delete btn btn-danger btn-sm rounded-circle p-0 position-absolute"
+                                                title="{{ __('Remove image') }}"
+                                                style="width: 22px; height: 22px; top: -7px; right: -7px; border: 2px solid #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.25); z-index: 20; display: flex; align-items: center; justify-content: center;">
+                                                <i class="bi bi-x-lg" style="font-size: 9px; line-height: 1;"></i>
                                             </a>
                                         </label>
                                         <input type="hidden" name="previousThumbnail[{{ $loop->index }}][id]"
@@ -461,14 +651,15 @@
                                 @endforeach
 
                                 <!-- New additional thumbnail placeholder -->
-                                <div id="addition">
-                                    <label for="additionThumbnail1" class="additionThumbnail cursor-pointer border border-dashed rounded-3 p-1 bg-white shadow-2xs d-flex align-items-center justify-content-center position-relative" style="width: 75px; height: 75px;">
+                                <div id="addition" class="position-relative">
+                                    <label for="additionThumbnail1" class="additionThumbnail cursor-pointer border border-dashed rounded-3 p-1 bg-white shadow-2xs d-flex align-items-center justify-content-center position-relative" style="width: 75px; height: 75px; overflow: visible !important;">
                                         <img src="{{ asset('default/upload.png') }}" id="preview2" alt="upload image"
                                             class="w-100 h-100 object-fit-contain rounded-2">
-                                        <button onclick="removeThumbnail('addition')" id="removeThumbnail1"
-                                            type="button" class="delete btn btn-danger btn-sm rounded-circle p-0 position-absolute top-0 end-0 translate-middle shadow-sm"
-                                            style="display: none; width: 20px; height: 20px; line-height: 18px;">
-                                            <i class="bi bi-x-lg small" style="font-size: 10px;"></i>
+                                        <button onclick="event.preventDefault(); event.stopPropagation(); removeThumbnail('addition')" id="removeThumbnail1"
+                                            type="button" class="delete btn btn-danger btn-sm rounded-circle p-0 position-absolute"
+                                            title="{{ __('Remove') }}"
+                                            style="display: none; width: 22px; height: 22px; top: -7px; right: -7px; border: 2px solid #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.25); z-index: 20; align-items: center; justify-content: center;">
+                                            <i class="bi bi-x-lg" style="font-size: 9px; line-height: 1;"></i>
                                         </button>
                                     </label>
                                     <input id="additionThumbnail1" accept="image/*" type="file"
@@ -594,6 +785,9 @@
         </div>
 
     </form>
+
+    @include('shop.product.ai-modal')
+    @include('shop.product.ai-image-modal')
 @endsection
 
 @push('css')
@@ -608,6 +802,18 @@
         .app-theme-dark .box-title {
             background: #2d2d2d;
             border-color: #2d2d2d;
+        }
+
+        .variant-row.variant-offline {
+            background-color: #f8fafc !important;
+            opacity: 0.65;
+        }
+        .variant-row.variant-offline .variant-online-price-display {
+            text-decoration: line-through;
+            color: #94a3b8 !important;
+        }
+        .variant-row.variant-offline .variant-online-disc-input {
+            background-color: #f1f5f9;
         }
 
         #colorBox,
@@ -632,9 +838,53 @@
         
         .additionThumbnail {
             transition: all 0.2s ease-in-out;
+            overflow: visible !important;
+            position: relative !important;
         }
         .additionThumbnail:hover {
             border-color: #0d6efd !important;
+        }
+        .additionThumbnail .delete {
+            width: 22px !important;
+            height: 22px !important;
+            min-width: 22px !important;
+            min-height: 22px !important;
+            padding: 0 !important;
+            position: absolute !important;
+            top: -7px !important;
+            right: -7px !important;
+            left: auto !important;
+            bottom: auto !important;
+            transform: none !important;
+            border-radius: 50% !important;
+            background-color: #dc3545 !important;
+            border: 2px solid #ffffff !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25) !important;
+            z-index: 25 !important;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer !important;
+            color: #ffffff !important;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        .additionThumbnail .delete:hover {
+            background-color: #b02a37 !important;
+            transform: scale(1.1) !important;
+            color: #ffffff !important;
+        }
+        .additionThumbnail .delete i {
+            font-size: 9px !important;
+            line-height: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .additionThumbnail .delete:not([style*="display: none"]):not([style*="display:none"]) {
+            display: flex !important;
+        }
+        .additionThumbnail .delete[style*="display: none"],
+        .additionThumbnail .delete[style*="display:none"] {
+            display: none !important;
         }
 
         /* Select2 Keywords input fix */
@@ -651,6 +901,22 @@
         .select2-container--default.select2-container--focus .select2-selection--multiple {
             border-color: #86b7fe !important;
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+        }
+
+        /* Variant Stock Table Styling */
+        .table-variant-stock th {
+            font-size: 11.5px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            vertical-align: middle;
+        }
+        .table-variant-stock td {
+            padding-top: 8px;
+            padding-bottom: 8px;
+            vertical-align: middle;
         }
     </style>
 @endpush
@@ -1019,17 +1285,31 @@
                 }
             });
 
-            // form submit loader
-            $('form').on('submit', function() {
-                var submitButton = $(this).find('button[type="submit"]');
+            // form submit loader & sync quill description
+            $('#editProductForm').on('submit', function(e) {
+                if (typeof quill !== 'undefined' && quill) {
+                    var descElem = document.getElementById('description');
+                    if (descElem) {
+                        if (typeof correctULTagFromQuill === 'function') {
+                            descElem.value = correctULTagFromQuill(quill.root.innerHTML);
+                        } else {
+                            descElem.value = quill.root.innerHTML;
+                        }
+                    }
+                }
 
+                if (this.checkValidity && !this.checkValidity()) {
+                    return;
+                }
+
+                var submitButton = $(this).find('button[type="submit"]');
                 submitButton.prop('disabled', true);
                 submitButton.removeClass('px-5');
 
                 submitButton.html(`<div class="d-flex align-items-center gap-1">
                     <div class="spinner-border spinner-border-sm" role="status"></div>
-                    <span>Updating...</span>
-                </div>`)
+                    <span>{{ __('Updating...') }}</span>
+                </div>`);
             });
         });
 
@@ -1113,22 +1393,26 @@
             // increment count
             thumbnailCount++;
 
-            document.getElementById(removeId).style.display = 'block';
+            const removeBtn = document.getElementById(removeId);
+            if (removeBtn) {
+                removeBtn.style.display = 'flex';
+            }
 
             // Create a new box dynamically
             const newThumbnailId = `additionThumbnail${thumbnailCount + 1}`;
             const newPreviewId = `preview${thumbnailCount + 1}`;
-            const mainId = 'addition' + thumbnailCount + 1;
+            const mainId = 'addition' + (thumbnailCount + 1);
 
             // Add the new box
             const newThumbnailBox = document.createElement('div');
             newThumbnailBox.id = mainId;
+            newThumbnailBox.className = 'position-relative';
 
             newThumbnailBox.innerHTML = `
-            <label for="${newThumbnailId}" class="additionThumbnail cursor-pointer border border-dashed rounded-3 p-1 bg-white shadow-2xs d-flex align-items-center justify-content-center position-relative" style="width: 75px; height: 75px;">
+            <label for="${newThumbnailId}" class="additionThumbnail cursor-pointer border border-dashed rounded-3 p-1 bg-white shadow-2xs d-flex align-items-center justify-content-center position-relative" style="width: 75px; height: 75px; overflow: visible !important;">
                 <img src="{{ asset('default/upload.png') }}" id="${newPreviewId}" alt="" class="w-100 h-100 object-fit-contain rounded-2">
-                <button onclick="removeThumbnail('${mainId}')" type="button" id="removeThumbnail${thumbnailCount + 1}" class="delete btn btn-danger btn-sm rounded-circle p-0 position-absolute top-0 end-0 translate-middle shadow-sm" style="display: none; width: 20px; height: 20px; line-height: 18px;"><i class="bi bi-x-lg small" style="font-size: 10px;"></i></button>
-                <input id="${newThumbnailId}" accept="image/*" type="file" name="additionThumbnail[]" class="d-none" onchange="previewAdditionalFile(event, '${newPreviewId}', 'removeThumbnail${thumbnailCount +1 }')">
+                <button onclick="event.preventDefault(); event.stopPropagation(); removeThumbnail('${mainId}')" type="button" id="removeThumbnail${thumbnailCount + 1}" class="delete btn btn-danger btn-sm rounded-circle p-0 position-absolute" title="{{ __('Remove') }}" style="display: none; width: 22px; height: 22px; top: -7px; right: -7px; border: 2px solid #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.25); z-index: 20; align-items: center; justify-content: center;"><i class="bi bi-x-lg" style="font-size: 9px; line-height: 1;"></i></button>
+                <input id="${newThumbnailId}" accept="image/*" type="file" name="additionThumbnail[]" class="d-none" onchange="previewAdditionalFile(event, '${newPreviewId}', 'removeThumbnail${thumbnailCount + 1}')">
             </label>
         `;
 
@@ -1359,6 +1643,198 @@
             } catch (e) {
                 console.error('Dimension estimation fallback:', e);
             }
+        }
+
+        // Calculate single variant row online price
+        function updateVariantRowPrice($input) {
+            let disc = parseFloat($input.val()) || 0;
+            if (disc < 0) { disc = 0; $input.val('0.00'); }
+            if (disc > 99.99) { disc = 99.99; $input.val('99.99'); }
+
+            const mrp = parseFloat($input.data('mrp')) || 0;
+            const onlinePrice = disc > 0 ? (mrp - (mrp * disc / 100)) : mrp;
+
+            const $row = $input.closest('tr');
+            const $display = $row.find('.variant-online-price-display');
+            $display.text('₹' + onlinePrice.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $display.attr('data-price', onlinePrice);
+
+            if (disc > 0) {
+                $display.removeClass('text-secondary').addClass('text-primary');
+            } else {
+                $display.removeClass('text-primary').addClass('text-secondary');
+            }
+        }
+
+        // Real-time recalculation of footer totals (Only includes active Online variants)
+        function recalculateVariantTotals() {
+            let totalQty = 0;
+            let totalPurcRate = 0;
+            let totalAmount = 0;
+            let totalMrp = 0;
+            let totalOnlinePrice = 0;
+            let totalOnlineCount = 0;
+
+            $('.variant-row').each(function() {
+                const isOnline = $(this).find('.variant-sell-online-switch').is(':checked');
+                if (isOnline) {
+                    totalOnlineCount++;
+                    const qty = parseFloat($(this).find('.variant-qty').text().trim()) || 0;
+                    const purcRate = parseFloat($(this).find('.variant-purc-rate').data('val')) || 0;
+                    const amount = parseFloat($(this).find('.variant-amount').data('val')) || 0;
+                    const mrp = parseFloat($(this).find('.variant-mrp').data('val')) || 0;
+                    const price = parseFloat($(this).find('.variant-online-price-display').attr('data-price')) || mrp;
+
+                    totalQty += qty;
+                    totalPurcRate += purcRate;
+                    totalAmount += amount;
+                    totalMrp += mrp;
+                    totalOnlinePrice += price;
+                }
+            });
+
+            $('#total_qty_display').text(totalQty);
+            $('#total_purc_rate_display').text('₹' + totalPurcRate.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#total_amount_display').text('₹' + totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#total_mrp_display').text('₹' + totalMrp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#total_online_price_display').text('₹' + totalOnlinePrice.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+            let avgDisc = 0;
+            if (totalMrp > 0 && totalOnlinePrice < totalMrp) {
+                avgDisc = ((totalMrp - totalOnlinePrice) / totalMrp) * 100;
+            }
+            $('#total_avg_disc_display').text('Avg: ' + avgDisc.toFixed(1) + '%');
+            $('#active_online_count').text(totalOnlineCount);
+            $('#header_online_count').text(totalOnlineCount);
+        }
+
+        $(document).on('input change keyup', '.variant-online-disc-input', function() {
+            updateVariantRowPrice($(this));
+            recalculateVariantTotals();
+        });
+
+        // Apply global discount to all variants
+        $(document).on('click', '#btn_apply_discount_to_all', function() {
+            const globalDisc = parseFloat($('#online_discount_percent').val()) || 0;
+            $('.variant-online-disc-input').each(function() {
+                $(this).val(globalDisc.toFixed(2));
+                updateVariantRowPrice($(this));
+            });
+            recalculateVariantTotals();
+
+            if (typeof Swal !== 'undefined' && Swal.mixin) {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: globalDisc > 0 ? globalDisc + '% applied to all variants' : 'All variant discounts reset to 0%'
+                });
+            }
+        });
+
+        // Online Promotional Discount Real-Time Calculation (Global preview)
+        $(document).on('input change keyup', '#online_discount_percent', function() {
+            let disc = parseFloat($(this).val()) || 0;
+            if (disc < 0) { disc = 0; $(this).val(0); }
+            if (disc > 99.99) { disc = 99.99; $(this).val(99.99); }
+
+            const mrp = parseFloat("{{ $referenceMrp }}") || 0;
+            let onlinePrice = mrp;
+
+            if (disc > 0 && mrp > 0) {
+                onlinePrice = mrp - (mrp * disc / 100);
+            }
+
+            $('#online_selling_price_preview').val(onlinePrice.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('input[name="discount_price"]').val(disc > 0 ? onlinePrice.toFixed(2) : 0);
+        });
+
+        // Toggle individual variant sell online status (Web & Mobile App)
+        $(document).on('change', '.variant-sell-online-switch', function() {
+            const $switch = $(this);
+            const inwardId = $switch.data('inward-id');
+            const isChecked = $switch.is(':checked');
+            const $row = $switch.closest('tr');
+            const $badge = $row.find('.variant-online-status-badge');
+            const $hidden = $row.find('.variant-sell-online-hidden');
+            const size = $switch.data('size');
+            const color = $switch.data('color');
+
+            // Update hidden input for form submission
+            $hidden.val(isChecked ? '1' : '0');
+
+            // Update row appearance and badge immediately
+            if (isChecked) {
+                $row.removeClass('variant-offline');
+                $badge.removeClass('bg-secondary-subtle text-secondary border-secondary-subtle')
+                      .addClass('bg-success-subtle text-success border-success-subtle')
+                      .text("{{ __('Online') }}");
+            } else {
+                $row.addClass('variant-offline');
+                $badge.removeClass('bg-success-subtle text-success border-success-subtle')
+                      .addClass('bg-secondary-subtle text-secondary border-secondary-subtle')
+                      .text("{{ __('Offline') }}");
+            }
+
+            // Update footer and header counters
+            updateOnlineVariantCounters();
+
+            // Instant AJAX persistence
+            $.ajax({
+                url: "{{ route('shop.product.variant-toggle-online') }}",
+                type: "POST",
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    inward_product_id: inwardId,
+                    is_online: isChecked ? 1 : 0
+                },
+                success: function(res) {
+                    if (typeof toastr !== 'undefined') {
+                        if (isChecked) {
+                            toastr.success("{{ __('Variant') }} (" + color + " / " + size + ") {{ __('is now ENABLED for Online Store & Mobile App sales!') }}");
+                        } else {
+                            toastr.warning("{{ __('Variant') }} (" + color + " / " + size + ") {{ __('is now DISABLED from Online Store & Mobile App (Physical POS only).') }}");
+                        }
+                    } else if (typeof Swal !== 'undefined' && Swal.mixin) {
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2500,
+                            timerProgressBar: true
+                        });
+                        Toast.fire({
+                            icon: isChecked ? 'success' : 'info',
+                            title: isChecked ? "{{ __('Variant enabled for Online & App!') }}" : "{{ __('Variant disabled from Online & App!') }}"
+                        });
+                    }
+                },
+                error: function(err) {
+                    // Revert switch on error
+                    $switch.prop('checked', !isChecked);
+                    $hidden.val(!isChecked ? '1' : '0');
+                    if (!isChecked) {
+                        $row.removeClass('variant-offline');
+                        $badge.removeClass('bg-secondary-subtle text-secondary').addClass('bg-success-subtle text-success').text("{{ __('Online') }}");
+                    } else {
+                        $row.addClass('variant-offline');
+                        $badge.removeClass('bg-success-subtle text-success').addClass('bg-secondary-subtle text-secondary').text("{{ __('Offline') }}");
+                    }
+                    updateOnlineVariantCounters();
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error("{{ __('Failed to update online status. Please check connection.') }}");
+                    }
+                }
+            });
+        });
+
+        function updateOnlineVariantCounters() {
+            recalculateVariantTotals();
         }
     </script>
 @endpush

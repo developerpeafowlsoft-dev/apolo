@@ -112,10 +112,12 @@ class OrderRepository extends Repository
                 $sellingPrice = (float) ($cart->mrp ?? 0);
 
                 if ($sellingPrice <= 0) {
-                    if ($inwardProduct && (float) $inwardProduct->discount_price > 0) {
-                        $sellingPrice = (float) $inwardProduct->discount_price;
-                    } elseif ($inwardProduct && (float) $inwardProduct->price > 0) {
-                        $sellingPrice = (float) $inwardProduct->price;
+                    if ($inwardProduct) {
+                        $vDisc = (float) (($inwardProduct->online_discount_percent !== null && $inwardProduct->online_discount_percent > 0)
+                            ? $inwardProduct->online_discount_percent
+                            : ($product->online_discount_percent ?? 0));
+                        $vMrp = (float) ($inwardProduct->mrp > 0 ? $inwardProduct->mrp : ($product->mrp ?? $product->price));
+                        $sellingPrice = ($vDisc > 0) ? round($vMrp - ($vMrp * $vDisc / 100), 2) : $vMrp;
                     } elseif ((float) $product->discount_price > 0) {
                         $sellingPrice = (float) $product->discount_price;
                     } else {
@@ -126,10 +128,10 @@ class OrderRepository extends Repository
                 $mrp = (float) ($cart->price ?? 0);
 
                 if ($mrp <= 0) {
-                    if ($inwardProduct && (float) $inwardProduct->mrp > 0) {
-                        $mrp = (float) $inwardProduct->mrp;
-                    } elseif ((float) $product->mrp > 0) {
+                    if ((float) $product->mrp > 0) {
                         $mrp = (float) $product->mrp;
+                    } elseif ($inwardProduct && (float) $inwardProduct->mrp > 0) {
+                        $mrp = (float) $inwardProduct->mrp;
                     } else {
                         $mrp = $sellingPrice;
                     }

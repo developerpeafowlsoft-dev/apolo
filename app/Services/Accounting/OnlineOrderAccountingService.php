@@ -165,7 +165,9 @@ class OnlineOrderAccountingService
 
             $financialYear = FinancialYear::where('start_date', '<=', $date)
                 ->where('end_date', '>=', $date)
-                ->where('is_active', 1)
+                // Which year a transaction BELONGS to is decided by its date alone.
+                // Filtering on is_active here sent every backdated entry to the
+                // fallback year once only the current year was left active.
                 ->first();
 
             $fyId = $financialYear ? $financialYear->id : 1;
@@ -173,14 +175,24 @@ class OnlineOrderAccountingService
             $placeOfSupply = $this->resolvePlaceOfSupply($order);
 
             // Accounts resolution from Chart of Accounts
-            $salesWebAccountId    = Account::where('code', 'SALES_WEB')->value('id') ?? Account::where('code', 'SALES_POS')->value('id') ?? 10;
-            $gatewayClearingId    = Account::where('code', 'PG_CLEARING')->value('id') ?? Account::where('code', 'BANK_HDFC')->value('id') ?? 21;
-            $codReceivableId      = Account::where('code', 'CUST_WEB')->value('id') ?? Account::where('code', 'CUST_WALKIN')->value('id') ?? 23;
-            $deliveryIncomeId     = Account::where('code', 'REV_DELIVERY')->value('id') ?? 32;
-            $cgstOutputId         = Account::where('code', 'CGST_OUT')->value('id') ?? 1;
-            $sgstOutputId         = Account::where('code', 'SGST_OUT')->value('id') ?? 2;
-            $igstOutputId         = Account::where('code', 'IGST_OUT')->value('id') ?? 3;
-            $roundAccountId       = Account::where('code', 'EXP_ROF')->value('id') ?? 31;
+            $acc = $this->resolveAccountIds([
+                'sales_web'       => ['SALES_WEB', 'SALES_POS'],
+                'gateway_clearing'=> ['PG_CLEARING', 'BANK_HDFC'],
+                'cod_receivable'  => ['CUST_WEB', 'CUST_WALKIN'],
+                'delivery_income' => ['REV_DELIVERY'],
+                'cgst_output'     => ['CGST_OUT'],
+                'sgst_output'     => ['SGST_OUT'],
+                'igst_output'     => ['IGST_OUT'],
+                'round_off'       => ['EXP_ROF'],
+            ]);
+            $salesWebAccountId = $acc['sales_web'];
+            $gatewayClearingId = $acc['gateway_clearing'];
+            $codReceivableId   = $acc['cod_receivable'];
+            $deliveryIncomeId  = $acc['delivery_income'];
+            $cgstOutputId      = $acc['cgst_output'];
+            $sgstOutputId      = $acc['sgst_output'];
+            $igstOutputId      = $acc['igst_output'];
+            $roundAccountId    = $acc['round_off'];
 
             $isCod = strtolower((string)(is_object($order->payment_method) ? $order->payment_method->value : $order->payment_method)) === 'cash payment'
                 || strtolower((string)(is_object($order->payment_method) ? $order->payment_method->value : $order->payment_method)) === 'cash';
@@ -312,18 +324,28 @@ class OnlineOrderAccountingService
             $date = now()->toDateString();
             $financialYear = FinancialYear::where('start_date', '<=', $date)
                 ->where('end_date', '>=', $date)
-                ->where('is_active', 1)
+                // Which year a transaction BELONGS to is decided by its date alone.
+                // Filtering on is_active here sent every backdated entry to the
+                // fallback year once only the current year was left active.
                 ->first();
 
             $fyId = $financialYear ? $financialYear->id : 1;
             $placeOfSupply = $this->resolvePlaceOfSupply($order);
 
-            $salesReturnAccountId = Account::where('code', 'SALES_RET')->value('id') ?? Account::where('code', 'SALES_WEB')->value('id') ?? 12;
-            $gatewayClearingId    = Account::where('code', 'PG_CLEARING')->value('id') ?? Account::where('code', 'BANK_HDFC')->value('id') ?? 21;
-            $codReceivableId      = Account::where('code', 'CUST_WEB')->value('id') ?? 23;
-            $deliveryIncomeId     = Account::where('code', 'REV_DELIVERY')->value('id') ?? 32;
-            $cgstOutputId         = Account::where('code', 'CGST_OUT')->value('id') ?? 1;
-            $sgstOutputId         = Account::where('code', 'SGST_OUT')->value('id') ?? 2;
+            $acc = $this->resolveAccountIds([
+                'sales_return'    => ['SALES_RET', 'SALES_WEB'],
+                'gateway_clearing'=> ['PG_CLEARING', 'BANK_HDFC'],
+                'cod_receivable'  => ['CUST_WEB', 'CUST_WALKIN'],
+                'delivery_income' => ['REV_DELIVERY'],
+                'cgst_output'     => ['CGST_OUT'],
+                'sgst_output'     => ['SGST_OUT'],
+            ]);
+            $salesReturnAccountId = $acc['sales_return'];
+            $gatewayClearingId    = $acc['gateway_clearing'];
+            $codReceivableId      = $acc['cod_receivable'];
+            $deliveryIncomeId     = $acc['delivery_income'];
+            $cgstOutputId         = $acc['cgst_output'];
+            $sgstOutputId         = $acc['sgst_output'];
             $igstOutputId         = Account::where('code', 'IGST_OUT')->value('id') ?? 3;
             $roundAccountId       = Account::where('code', 'EXP_ROF')->value('id') ?? 31;
 
@@ -425,5 +447,54 @@ class OnlineOrderAccountingService
                 'entries' => $entries,
             ]);
         });
+    }
+
+    /**
+     * Resolve ledger accounts by code, in one query, failing loudly.
+     *
+     * These lookups previously ended in a literal id - `?? 1`, `?? 21`, `?? 32`.
+     * If a code were ever missing the posting would silently land in whatever
+     * account happened to hold that id. A missing chart entry is a setup fault
+     * and should stop the posting, not quietly misfile it.
+     *
+     * @param  array<string, string[]>  $spec  label => codes to try, in order
+     * @return array<string, int>
+     */
+    protected function resolveAccountIds(array $spec): array
+    {
+        $codes = [];
+        foreach ($spec as $chain) {
+            foreach ((array)$chain as $code) {
+                $codes[] = $code;
+            }
+        }
+
+        $found = Account::whereIn('code', array_values(array_unique($codes)))
+            ->pluck('id', 'code')
+            ->toArray();
+
+        $resolved = [];
+        $missing = [];
+
+        foreach ($spec as $label => $chain) {
+            foreach ((array)$chain as $code) {
+                if (!empty($found[$code])) {
+                    $resolved[$label] = (int)$found[$code];
+                    break;
+                }
+            }
+            if (!isset($resolved[$label])) {
+                $missing[] = $label . ' (tried ' . implode(', ', (array)$chain) . ')';
+            }
+        }
+
+        if (!empty($missing)) {
+            throw new Exception(
+                'Chart of accounts is missing: ' . implode('; ', $missing)
+                . '. Seed these ledgers before posting.'
+            );
+        }
+
+        return $resolved;
     }
 }

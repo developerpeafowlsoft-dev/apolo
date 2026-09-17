@@ -82,6 +82,7 @@ class VoucherService
                 'sequence_id' => $seqId,
                 'branch_id' => $branchId,
                 'original_id' => $data['original_id'] ?? null,
+                'reverses_voucher_id' => $data['reverses_voucher_id'] ?? null,
             ]);
 
             // Entries + balances
@@ -121,6 +122,10 @@ class VoucherService
     {
         return DB::transaction(function () use ($voucherId, $data) {
             $voucher = Voucher::with('entries')->lockForUpdate()->findOrFail($voucherId);
+
+            if ($voucher->status === 'reversed') {
+                throw new Exception('A reversed voucher cannot be edited. Post a new voucher instead.');
+            }
 
             // Reverse previous balances
             foreach ($voucher->entries as $e) {
@@ -175,32 +180,76 @@ class VoucherService
     }
 
     /**
-     * Reverse a voucher (no hard delete) and undo balances.
+     * Reverse a voucher by posting a mirrored contra voucher.
+     *
+     * The previous implementation adjusted account_balances directly and flipped
+     * a status flag, leaving the original entries in place. Because no report
+     * filters on status - 43 aggregation sites across 5 services - a reversed
+     * voucher vanished from balances but still counted in the trial balance, P&L
+     * and balance sheet.
+     *
+     * A contra voucher nets the original to zero in anything that sums entries,
+     * needs no report changes, and leaves both sides visible for audit. This is
+     * also how reversal is normally done in double-entry practice: you never
+     * un-post an entry, you post its opposite.
+     *
+     * Returns the CONTRA voucher, not the original.
      */
-    public function reverse(int $voucherId): Voucher
+    public function reverse(int $voucherId, ?string $date = null, ?string $narration = null): Voucher
     {
-        return DB::transaction(function () use ($voucherId) {
-            $voucher = Voucher::with('entries')->lockForUpdate()->findOrFail($voucherId);
-            if ($voucher->status === 'reversed') return $voucher;
+        return DB::transaction(function () use ($voucherId, $date, $narration) {
+            $original = Voucher::with('entries')->lockForUpdate()->findOrFail($voucherId);
 
-            foreach ($voucher->entries as $e) {
-                $this->applyToBalance(
-                    $e->account_id,
-                    $voucher->shop_id,
-                    $voucher->financial_year_id,
-                    $this->inverse($e->type),
-                    (float)$e->amount
+            if ($original->status === 'reversed') {
+                $existing = Voucher::where('reverses_voucher_id', $original->id)->first();
+                if ($existing) {
+                    return $existing;   // idempotent
+                }
+                throw new Exception(
+                    "Voucher {$original->voucher_no} is marked reversed but has no contra voucher. "
+                    . 'It was reversed under the old balance-adjusting scheme; correct it manually.'
                 );
             }
 
-            $voucher->status = 'reversed';
-            $voucher->save();
+            if ($original->entries->isEmpty()) {
+                throw new Exception("Voucher {$original->voucher_no} has no entries to reverse.");
+            }
 
-            $this->audit($voucher->id, 'reversed', [
-                'voucher_no' => $voucher->voucher_no,
+            $entries = [];
+            foreach ($original->entries as $e) {
+                $entries[] = [
+                    'account_id' => $e->account_id,
+                    'type' => $this->inverse($e->type),
+                    'amount' => (float)$e->amount,
+                    'description' => trim("Reversal of {$original->voucher_no}" . ($e->description ? " - {$e->description}" : '')),
+                ];
+            }
+
+            // Same voucher_type, so the contra takes the next number in the normal
+            // series. Deliberately no seq_prefix override: upsertSequence() keys on
+            // type rather than prefix, so passing one would rewrite the prefix for
+            // every future voucher of this type.
+            $contra = $this->create([
+                'voucher_type' => $original->voucher_type,
+                'date' => $date ?? now()->toDateString(),
+                'narration' => $narration ?? "Reversal of {$original->voucher_no}",
+                'shop_id' => $original->shop_id,
+                'financial_year_id' => $original->financial_year_id,
+                'branch_id' => $original->branch_id,
+                'reverses_voucher_id' => $original->id,
+                'entries' => $entries,
             ]);
 
-            return $voucher;
+            $original->status = 'reversed';
+            $original->save();
+
+            $this->audit($original->id, 'reversed', [
+                'voucher_no' => $original->voucher_no,
+                'contra_voucher_id' => $contra->id,
+                'contra_voucher_no' => $contra->voucher_no,
+            ]);
+
+            return $contra;
         });
     }
 
@@ -213,6 +262,16 @@ class VoucherService
             $voucher = Voucher::lockForUpdate()->findOrFail($voucherId);
             if ($voucher->status !== 'reversed') {
                 throw new Exception('Delete allowed only for reversed vouchers.');
+            }
+
+            // Deleting the original would leave its contra dangling, and the contra
+            // still carries live entries - the books would go out by that amount.
+            $contra = Voucher::where('reverses_voucher_id', $voucher->id)->first();
+            if ($contra) {
+                throw new Exception(
+                    "Cannot delete {$voucher->voucher_no}: contra voucher {$contra->voucher_no} reverses it. "
+                    . 'Delete the contra first, or leave both for audit.'
+                );
             }
             VoucherEntry::where('voucher_id', $voucher->id)->delete();
             $voucher->delete();
@@ -237,8 +296,13 @@ class VoucherService
             if ($amt <= 0) throw new Exception('Entry amount must be > 0.');
             if ($e['type'] === 'Dr') $dr += $amt; else $cr += $amt;
         }
-        if (round($dr,2) !== round($cr,2)) {
-            throw new Exception('Debit and Credit totals do not match.');
+        // Compare with a tolerance rather than strict float equality: two sums that
+        // both represent the same rupee value can land on adjacent doubles, which
+        // would reject a perfectly valid voucher.
+        if (abs($dr - $cr) > 0.005) {
+            throw new Exception(sprintf(
+                'Debit and Credit totals do not match (Dr %.2f vs Cr %.2f).', $dr, $cr
+            ));
         }
     }
 
@@ -248,22 +312,27 @@ class VoucherService
         $branchId = $branchContext->getCurrentBranchId();
         $branch = $branchContext->getCurrentBranch();
 
-        $seq = VoucherSequence::firstOrCreate(
-            [
-                'shop_id' => $data['shop_id'],
-                'financial_year_id' => $data['financial_year_id'],
-                'voucher_type' => $data['voucher_type'],
-                'branch_id' => $branchId,
-            ],
-            [
-                'prefix' => $data['seq_prefix'] ?? null,   // e.g. BR01-FY2526-PAY-
-                'padding' => $data['seq_padding'] ?? 6,    // digits
-                'current_no' => $branch ? ($branch->voucher_range_start - 1) : 0,
-                'range_start' => $branch ? $branch->voucher_range_start : null,
-                'range_end' => $branch ? $branch->voucher_range_end : null,
-                'reset_policy' => 'yearly',
-            ]
-        );
+        $key = [
+            'shop_id' => $data['shop_id'],
+            'financial_year_id' => $data['financial_year_id'],
+            'voucher_type' => $data['voucher_type'],
+            'branch_id' => $branchId,
+        ];
+
+        VoucherSequence::firstOrCreate($key, [
+            'prefix' => $data['seq_prefix'] ?? null,   // e.g. BR01-FY2526-PAY-
+            'padding' => $data['seq_padding'] ?? 6,    // digits
+            'current_no' => $branch ? ($branch->voucher_range_start - 1) : 0,
+            'range_start' => $branch ? $branch->voucher_range_start : null,
+            'range_end' => $branch ? $branch->voucher_range_end : null,
+            'reset_policy' => 'yearly',
+        ]);
+
+        // Re-read under a row lock. Without this two tills billing at the same
+        // instant both read the same current_no, both claim the next number, and
+        // the second hits the unique index on vouchers.voucher_no - a failed sale
+        // at the counter. The caller always runs inside a transaction.
+        $seq = VoucherSequence::where($key)->lockForUpdate()->first();
 
         // Allow override of prefix/padding per call (optional)
         if (!empty($data['seq_prefix']))  $seq->prefix  = $data['seq_prefix'];
@@ -272,12 +341,12 @@ class VoucherService
         return $seq;
     }
 
-    protected function applyToBalance(int $accountId, int $branchId, int $fyId, string $type, float $amount): void
+    protected function applyToBalance(int $accountId, int $shopId, int $fyId, string $type, float $amount): void
     {
         $bal = AccountBalance::firstOrCreate(
             [
                 'account_id' => $accountId,
-                'shop_id' => $branchId,
+                'shop_id' => $shopId,
                 'financial_year_id' => $fyId,
             ],
             [

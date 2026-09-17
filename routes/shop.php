@@ -7,7 +7,6 @@ use App\Http\Controllers\Shop\BannerController;
 use App\Http\Controllers\Shop\BrandController;
 use App\Http\Controllers\Shop\BulkProductExportController;
 use App\Http\Controllers\Shop\BulkProductImportController;
-use App\Http\Controllers\Shop\CashierReportController;
 use App\Http\Controllers\Shop\CategoryController;
 use App\Http\Controllers\Shop\ColorController;
 use App\Http\Controllers\Shop\CustomerMessageController;
@@ -17,7 +16,10 @@ use App\Http\Controllers\Shop\EmployeeController;
 use App\Http\Controllers\Shop\FlashSaleController;
 use App\Http\Controllers\Shop\GalleryController;
 use App\Http\Controllers\Shop\InwardProductController;
+use App\Http\Controllers\Shop\OpeningStockController;
+use App\Http\Controllers\Shop\OpeningStockInsightController;
 use App\Http\Controllers\Shop\PurchaseController;
+use App\Http\Controllers\Shop\SupplierDuePaymentController;
 use App\Http\Controllers\Shop\NotificationController;
 use App\Http\Controllers\Shop\OrderController;
 use App\Http\Controllers\Shop\POSController;
@@ -110,6 +112,7 @@ Route::name('shop.')->group(function () {
             Route::put('/category/{category}/update', 'update')->name('category.update');
             Route::delete('/category/{category}/destroy', 'destroy')->name('category.destroy');
             Route::get('/category/{category}/toggle', 'statusToggle')->name('category.toggle');
+            Route::get('/category/{category}/hero-toggle', 'heroToggle')->name('category.hero-toggle');
         });
 
         // sub categories route
@@ -180,6 +183,10 @@ Route::name('shop.')->group(function () {
             Route::delete('/product/{product}/destroy', 'destroy')->name('product.destroy');
             Route::get('/product/{product}/thumbnail/{media}/delete', 'thumbnailDestroy')->name('product.remove.thumbnail');
             Route::get('/product/{product}/generate-barcode', 'generateBarcode')->name('product.barcode');
+            Route::post('/product/ai-generate-content', 'aiGenerateContent')->name('product.ai-generate-content');
+            Route::post('/product/ai-generate-images', 'aiGenerateImages')->name('product.ai-generate-images');
+            Route::post('/product/ai-upload-manual-image', 'aiUploadManualImage')->name('product.ai-upload-manual-image');
+            Route::post('/product/variant-toggle-online', 'variantToggleOnline')->name('product.variant-toggle-online');
         });
 
         // profile
@@ -189,6 +196,7 @@ Route::name('shop.')->group(function () {
             Route::put('/profile/update', 'update')->name('profile.update');
             Route::get('/profile/change-password', 'changePassword')->name('profile.change-password');
             Route::put('/profile/change-password/update', 'updatePassword')->name('profile.change-password.update');
+            Route::post('/profile/test-gemini-key', 'testGeminiKey')->name('profile.test-gemini-key');
         });
 
         // Promo Codes
@@ -318,12 +326,6 @@ Route::name('shop.')->group(function () {
             Route::get('/branch/sync-status', 'syncStatus')->name('branch.syncStatus');
         });
 
-        // Cashier Performance / Billing Report
-        Route::controller(CashierReportController::class)->group(function () {
-            Route::get('/reports/cashier-performance', 'index')->name('cashier-report.index');
-            Route::get('/reports/cashier-performance/export', 'exportCSV')->name('cashier-report.export');
-        });
-
         // employee management route
         Route::controller(EmployeeController::class)->group(function () {
             Route::get('/employees', 'index')->name('employee.index');
@@ -361,6 +363,7 @@ Route::name('shop.')->group(function () {
             Route::get('/account-master/{accountMaster}/edit', 'edit')->name('accountMaster.edit');
             Route::put('/account-master/{accountMaster}/update', 'update')->name('accountMaster.update');
             Route::get('/account-master/{accountMaster}/toggle', 'statusToggle')->name('accountMaster.toggle');
+            Route::get('/account-master/{accountMaster}/party-code-toggle', 'partyCodeToggle')->name('accountMaster.partyCodeToggle');
 
             Route::get('/cities/search', 'citiesSearch')->name('cities.search');
             Route::get('/country/search', 'countrySearch')->name('country.search');
@@ -369,6 +372,18 @@ Route::name('shop.')->group(function () {
 
             // GST Check
             Route::post('/gst/check', 'check')->name('gst.check');
+        });
+
+        // Manual journal vouchers (JSON API - the accounting VoucherController,
+        // distinct from the promo-code routes above which use the same word).
+        Route::controller(VoucherController::class)->middleware('checkShopOwner')->group(function () {
+            Route::get('/accounting/journal', 'index')->name('journalVoucher.index');
+            Route::post('/accounting/journal/preview-number', 'previewNumber')->name('journalVoucher.previewNumber');
+            Route::post('/accounting/journal', 'store')->name('journalVoucher.store');
+            Route::get('/accounting/journal/{id}', 'show')->name('journalVoucher.show');
+            Route::put('/accounting/journal/{id}', 'update')->name('journalVoucher.update');
+            Route::post('/accounting/journal/{id}/reverse', 'reverse')->name('journalVoucher.reverse');
+            Route::delete('/accounting/journal/{id}', 'destroy')->name('journalVoucher.destroy');
         });
 
         // Statutory GST & Financial Reports Dashboard
@@ -468,6 +483,22 @@ Route::name('shop.')->group(function () {
             Route::get('/item-master/modalData','modalData')->name('itemMaster.modalData');
         });
 
+        // Opening Stock (legacy imported stock - bypasses the Purchase stage)
+        Route::controller(OpeningStockController::class)->middleware('checkShopOwner')->group(function () {
+            Route::get('/opening-stock', 'index')->name('openingStock.index');
+            Route::post('/opening-stock/{id}/toggle-online', 'toggleOnline')->name('openingStock.toggleOnline');
+            Route::post('/opening-stock/bulk-toggle-online', 'bulkToggleOnline')->name('openingStock.bulkToggleOnline');
+        });
+
+        // Opening Stock analysis: vendor-wise purchase vs sale, and the detail
+        // page behind each summary card on the register.
+        Route::controller(OpeningStockInsightController::class)->middleware('checkShopOwner')->group(function () {
+            Route::get('/opening-stock/vendors', 'vendors')->name('openingStock.vendors');
+            Route::get('/opening-stock/vendors/export', 'vendorsExport')->name('openingStock.vendorsExport');
+            Route::get('/opening-stock/vendors/{id}', 'vendor')->whereNumber('id')->name('openingStock.vendor');
+            Route::get('/opening-stock/insight/{metric}', 'insight')->name('openingStock.insight');
+        });
+
         // Inward Product
         Route::controller(InwardProductController::class)->middleware('checkShopOwner')->group(function () {
             Route::get('/inward-product','index')->name('inwardProduct.index');
@@ -482,7 +513,6 @@ Route::name('shop.')->group(function () {
             Route::get('/inward-product/{inwardProduct}/destroy', 'destroy')->name('inwardProduct.destroy');
             Route::get('/inward-product/{inwardProduct}/destroy-inward-product', 'destroyInwardProduct')->name('inwardProduct.destroyInwardProduct');
             Route::get('/inward-product/list','inwardProduct')->name('inwardProduct.list');
-            Route::get('/inward-product/next-kachi-sequence', 'getNextKachiSequence')->name('inwardProduct.nextKachiSequence');
 //
             Route::get('/inward-product/designDataGet','designDataGet')->name('designMaster.designDataGet');
 
@@ -495,6 +525,9 @@ Route::name('shop.')->group(function () {
             Route::get('/product-barcode/{id}/generate', 'productBarcodeGenerate')->name('productBarcodeGenerate.generate');
             Route::post('/product-barcode/generate-multiple', 'productBarcodeGenerateMultiple')->name('productBarcodeGenerateMultiple.generateMultiple');
 
+            // Bulk Barcode Generation & Printing for Inward Invoice
+            Route::post('/inward-product/{inwardInvoiceId}/generate-all-barcodes', 'generateAllBarcodes')->name('inwardProduct.generateAllBarcodes');
+            Route::match(['get', 'post'], '/inward-product/{inwardInvoiceId}/print-multiple-barcodes', 'printMultipleInwardBarcodes')->name('inwardProduct.printMultipleBarcodes');
         });
 
         // New Code By Spider
@@ -526,6 +559,13 @@ Route::name('shop.')->group(function () {
 
         });
         // Close
+
+        // Supplier Credit Due Payments & Bank Master Settlement
+        Route::controller(SupplierDuePaymentController::class)->middleware('checkShopOwner')->group(function () {
+            Route::get('/supplier-due-payments', 'index')->name('supplierDuePayment.index');
+            Route::post('/supplier-due-payments/pay', 'pay')->name('supplierDuePayment.pay');
+            Route::get('/supplier-due-payments/{id}/history', 'history')->name('supplierDuePayment.history');
+        });
 
         Route::controller(MasterController::class)->middleware('checkShopOwner')->group(function () {
             Route::get('/master-season','masterSeason')->name('masterSeason.seasonFind');

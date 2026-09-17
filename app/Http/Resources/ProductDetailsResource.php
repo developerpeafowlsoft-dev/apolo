@@ -18,7 +18,7 @@ class ProductDetailsResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $this->load(['reviews', 'orders', 'colors', 'shop', 'sizes', 'unit', 'brand', 'flashSales']);
+        $this->load(['reviews', 'orders', 'colors', 'shop', 'sizes', 'unit', 'brand', 'flashSales', 'categories']);
 
         $lang = request()->header('accept-language') ?? 'en';
 
@@ -29,7 +29,9 @@ class ProductDetailsResource extends JsonResource
             $favorite = $user->customer->favorites()->where('product_id', $this->id)->exists();
         }
 
-        $discountPercentage = $this->getDiscountPercentage($this->price, $this->discount_price);
+        $discountPercentage = ((float)($this->online_discount_percent ?? 0) > 0)
+            ? (float) $this->online_discount_percent
+            : $this->getDiscountPercentage($this->price, $this->discount_price);
         $totalSold = $this->orders->sum('pivot.quantity');
 
         $flashSale = $this->flashSales?->first();
@@ -58,6 +60,8 @@ class ProductDetailsResource extends JsonResource
 
         $brandTranslation = $this->brand?->translations()?->where('lang', $lang)->first();
         $brandName = $brandTranslation?->name ?? $this->brand?->name;
+        $category = $this->categories?->first();
+        $categoryName = $category?->name;
         $shop = $this->shop;
 
         $lastOnline = $this->last_online >= now() ? true : false;
@@ -68,10 +72,11 @@ class ProductDetailsResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $name,
+            'code' => $this->code,
             'short_description' => $shortDescription,
-            'price' => (float) number_format($price, 2, '.', ''),
-            'discount_price' => (float) number_format($discountPrice, 2, '.', ''),
-            'discount_percentage' => (float) number_format($discountPercentage, 2, '.', ''),
+            'price' => (float) number_format((float) ($price ?? 0), 2, '.', ''),
+            'discount_price' => (float) number_format((float) ($discountPrice ?? 0), 2, '.', ''),
+            'discount_percentage' => (float) number_format((float) ($discountPercentage ?? 0), 2, '.', ''),
             'rating' => (float) $this->averageRating ?? 0.0,
             'total_reviews' => (string) Number::abbreviate($this->reviews?->count(), maxPrecision: 2),
             'total_sold' => (string) number_format($totalSold, 0, '.', ','),
@@ -81,6 +86,12 @@ class ProductDetailsResource extends JsonResource
             'sizes' => SizeResource::collection($this->sizes),
             'colors' => ColorResource::collection($this->colors),
             'brand' => $brandName,
+            'category' => $categoryName,
+            'length' => $this->length,
+            'width' => $this->width,
+            'height' => $this->height,
+            'weight' => $this->weight,
+            'min_order_quantity' => $this->min_order_quantity,
             'unit' => $this->unit ? UnitResource::make($this->unit) : null,
             'description' => $description,
             'shop' => [
@@ -110,22 +121,31 @@ class ProductDetailsResource extends JsonResource
         // Get invoice IDs from product
         $invoiceIds = $this->inward_invoice_ids;
 
-        // Handle different formats
-        if (is_string($invoiceIds)) {
-            $invoiceIds = json_decode($invoiceIds, true) ?? [];
-        }
+        if ($this->design_master_id) {
+            $inwardProducts = InwardProduct::where('design_master_id', $this->design_master_id)
+                ->with(['designMaster'])
+                ->get();
+        } else {
+            // Handle different formats
+            if (is_string($invoiceIds)) {
+                $invoiceIds = json_decode($invoiceIds, true) ?? [];
+            }
 
-        if (!is_array($invoiceIds) || empty($invoiceIds)) {
-            return [];
-        }
+            if (!is_array($invoiceIds) || empty($invoiceIds)) {
+                return [];
+            }
 
-        // ✅ Get all inward products for these invoices
-        $inwardProducts = InwardProduct::whereIn('inward_invoice_id', $invoiceIds)
-            ->where('product_id', $this->id)
-            ->with(['designMaster'])
-            ->get();
+            $inwardProducts = InwardProduct::whereIn('inward_invoice_id', $invoiceIds)
+                ->with(['designMaster'])
+                ->get();
+        }
 
         foreach ($inwardProducts as $inwardProduct) {
+            // Skip variant if disabled from online & mobile app sales
+            if (isset($inwardProduct->is_online_product) && (int) $inwardProduct->is_online_product === 0) {
+                continue;
+            }
+
             // ✅ Get colors from inward_product_colors
             $colorData = DB::table('inward_product_colors')
                 ->where('inward_product_id', $inwardProduct->id)
@@ -153,6 +173,15 @@ class ProductDetailsResource extends JsonResource
             // ✅ Combine all color-size variations
             foreach ($colorData as $color) {
                 foreach ($sizeData as $size) {
+                    $vDisc = ((float)($inwardProduct->online_discount_percent ?? 0) > 0)
+                        ? (float) $inwardProduct->online_discount_percent
+                        : (((float)($this->online_discount_percent ?? 0) > 0)
+                            ? (float) $this->online_discount_percent
+                            : 0);
+                    $vPrice = ($vDisc > 0)
+                        ? round($inwardProduct->mrp - ($inwardProduct->mrp * $vDisc / 100), 2)
+                        : (float) $inwardProduct->mrp;
+
                     $inwardProductData[] = [
                         'color_id' => $color->id,
                         'color_name' => $color->name ?? 'N/A',
@@ -162,7 +191,8 @@ class ProductDetailsResource extends JsonResource
                         'qty' => $inwardProduct->quantity,
                         'purc_rate' => (float) number_format($inwardProduct->buy_price, 2, '.', ''),
                         'mrp' => (float) number_format($inwardProduct->mrp, 2, '.', ''),
-                        'discount_percent' => (float) $inwardProduct->discount_price,
+                        'price' => (float) number_format($vPrice, 2, '.', ''),
+                        'discount_percent' => $vDisc,
                     ];
                 }
             }

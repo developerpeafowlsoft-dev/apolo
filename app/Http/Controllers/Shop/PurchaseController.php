@@ -21,30 +21,16 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         $shop = generaleSetting('shop');
+        $shop?->load('state:id,name');
         $rootShop = generaleSetting('rootShop');
 
         $dayBooks = $shop?->counter()->get();
+//        dd($dayBooks,$rootShop,$shop);
         $inwardTaxs = VatTax::active()->get(['id', 'name', 'percentage']);
-
-        // Default Purchase List: show ONLY normal/non-Kachi entries (is_kachi = 0 or null)
-        $inwardLists = ProductPurchase::with([
-            'inwardInvoice:id,inward_voucher_no,inward_date,inward_challan_no,inward_challan_date,inward_party_code,inward_acc_gst_amount,inward_acc_net_amount,inward_acc_amt_with_gst,is_kachi',
-            'inwardInvoice.partyCode:id,accountName,accountshortcode,cont_info_mobile1,tax_info_gst_no',
-            'inwardInvoice.inwardProduct:id,inward_invoice_id,is_online_product'
-        ])
-            ->whereHas('inwardInvoice', function($q) {
-                $q->where(function($subQ) {
-                    $subQ->where('is_kachi', 0)->orWhereNull('is_kachi');
-                });
-            })
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
-
-        return view('shop.purchase-product.index',compact('dayBooks','inwardTaxs','inwardLists'));
+        return view('shop.purchase-product.index',compact('dayBooks','inwardTaxs','shop'));
     }
 
 
@@ -67,7 +53,7 @@ class PurchaseController extends Controller
             ]);
         }
 
-        $inwardData = InwardInvoice::with(['counter:id,code,counter_name','vattax:id,name,percentage','partyCode:id,accountName,accountshortcode,other_info_act_limit','inwardProduct','purchaser:id,name,last_name','season:id,name','agent:id,code,name','transport:id,code,name','deliveryBy:id,name','inwardProduct.products:id,name','inwardProduct.colors','inwardProduct.sizes','inwardProduct.designMaster:id,design_number','inwardProduct.hsnMaster:id,hsn_code','inwardProduct.vatTax:id,percentage'])
+        $inwardData = InwardInvoice::with(['counter:id,code,counter_name','vattax:id,name,percentage','partyCode:id,accountName,accountshortcode,other_info_act_limit,state_id','inwardProduct','purchaser:id,name,last_name','season:id,name','agent:id,code,name','transport:id,code,name','deliveryBy:id,name','inwardProduct.products:id,name','inwardProduct.colors','inwardProduct.sizes','inwardProduct.designMaster:id,design_number','inwardProduct.hsnMaster:id,hsn_code','inwardProduct.vatTax:id,percentage'])
 
             ->where(function ($query) use ($value) {
 
@@ -131,6 +117,18 @@ class PurchaseController extends Controller
                     'inward_acc_lr_no' => $purchaseData['inward_acc_lr_no'] ?? $invoiceInward->inward_acc_lr_no,
                     'inward_acc_lr_date' => $purchaseData['inward_acc_lr_date'] ?? $invoiceInward->inward_acc_lr_date,
                     'inward_acc_remark' => $purchaseData['inward_acc_remark'] ?? $invoiceInward->inward_acc_remark,
+                    'inward_bill_remark' => $purchaseData['inward_bill_remark'] ?? $invoiceInward->inward_bill_remark,
+                    'cash_or_credit' => $purchaseData['cash_or_credit'] ?? $invoiceInward->cash_or_credit,
+                    'bank_cash_discount_percent' => $purchaseData['bank_cash_discount_percent'] ?? $invoiceInward->bank_cash_discount_percent,
+                    'gross_amount' => $purchaseData['gross_amount'] ?? $invoiceInward->gross_amount,
+                    'bill_discount_percent' => $purchaseData['bill_discount_percent'] ?? $invoiceInward->bill_discount_percent,
+                    'bill_discount_amount' => $purchaseData['bill_discount_amount'] ?? $invoiceInward->bill_discount_amount,
+                    'cash_discount_percent' => $purchaseData['cash_discount_percent'] ?? $invoiceInward->cash_discount_percent,
+                    'cash_discount_amount' => $purchaseData['cash_discount_amount'] ?? $invoiceInward->cash_discount_amount,
+                    'agent_commission_percent' => $purchaseData['agent_commission_percent'] ?? $invoiceInward->agent_commission_percent,
+                    'agent_commission_amount' => $purchaseData['agent_commission_amount'] ?? $invoiceInward->agent_commission_amount,
+                    'expense_amount' => $purchaseData['expense_amount'] ?? $invoiceInward->expense_amount,
+                    'other_amount' => $purchaseData['other_amount'] ?? $invoiceInward->other_amount,
                     'inward_acc_gst_amount' => $purchaseData['inward_acc_gst_amount'] ?? $invoiceInward->inward_acc_gst_amount,
                     'inward_acc_net_amount' => $purchaseData['inward_acc_net_amount'] ?? $invoiceInward->inward_acc_net_amount,
                     'inward_acc_freight_amount' => $purchaseData['inward_acc_freight_amount'] ?? $invoiceInward->inward_acc_freight_amount,
@@ -138,26 +136,65 @@ class PurchaseController extends Controller
                     'inward_acc_amt_with_gst' => $purchaseData['inward_acc_amt_with_gst'] ?? $invoiceInward->inward_acc_amt_with_gst,
                 ]);
 
-                // 2. Loop through request rows and update InwardProduct records
+                // 2. Loop through request rows and update or create InwardProduct records
                 if (!empty($request->rows)) {
+                    $submittedInwardIds = [];
                     foreach ($request->rows as $row) {
                         if (!empty($row['inwardProductId'])) {
                             $inwardProd = InwardProduct::find($row['inwardProductId']);
                             if ($inwardProd) {
                                 $inwardProd->update([
-                                    'quantity' => $row['qty'],
-                                    'buy_price' => $row['purcRate'],
-                                    'price' => $row['amount'],
-                                    'discount_price' => $row['disc'],
-                                    'mrp' => $row['mrp'],
-                                    'mark_up' => $row['mark_up'],
-                                    'mark_down' => $row['mark_down'],
-                                    'net_purc_rate' => $row['netPurcRate'],
-                                    'hsn_master_id' => $row['taxCodeId'],
-                                    'vat_tax_id' => $row['sgstId'],
+                                    'quantity' => $row['qty'] ?? 1,
+                                    'buy_price' => $row['purcRate'] ?? 0,
+                                    'price' => $row['amount'] ?? 0,
+                                    'discount_price' => $row['disc'] ?? 0,
+                                    'mrp' => $row['mrp'] ?? 0,
+                                    'mark_up' => $row['mark_up'] ?? 0,
+                                    'mark_down' => $row['mark_down'] ?? 0,
+                                    'net_purc_rate' => $row['netPurcRate'] ?? 0,
+                                    'hsn_master_id' => $row['taxCodeId'] ?? null,
+                                    'vat_tax_id' => $row['sgstId'] ?? null,
                                 ]);
+                                if (!empty($row['colorInwardIds'])) {
+                                    $inwardProd->colors()->sync($row['colorInwardIds']);
+                                }
+                                if (!empty($row['sizeInwardIds'])) {
+                                    $inwardProd->sizes()->sync($row['sizeInwardIds']);
+                                }
+                                $submittedInwardIds[] = $inwardProd->id;
                             }
+                        } elseif (!empty($row['itemid'])) {
+                            // New item added directly in Purchase Product
+                            $newInwardProd = InwardProduct::create([
+                                'inward_invoice_id' => $invoiceInward->id,
+                                'product_id' => $row['itemid'],
+                                'design_master_id' => $row['designid'] ?? null,
+                                'quantity' => $row['qty'] ?? 1,
+                                'buy_price' => $row['purcRate'] ?? 0,
+                                'price' => $row['amount'] ?? 0,
+                                'discount_price' => $row['disc'] ?? 0,
+                                'mrp' => $row['mrp'] ?? 0,
+                                'mark_up' => $row['mark_up'] ?? 0,
+                                'mark_down' => $row['mark_down'] ?? 0,
+                                'net_purc_rate' => $row['netPurcRate'] ?? 0,
+                                'hsn_master_id' => $row['taxCodeId'] ?? null,
+                                'vat_tax_id' => $row['sgstId'] ?? null,
+                                'is_purchase_only' => true,
+                            ]);
+                            if (!empty($row['colorInwardIds'])) {
+                                $newInwardProd->colors()->sync($row['colorInwardIds']);
+                            }
+                            if (!empty($row['sizeInwardIds'])) {
+                                $newInwardProd->sizes()->sync($row['sizeInwardIds']);
+                            }
+                            $submittedInwardIds[] = $newInwardProd->id;
                         }
+                    }
+
+                    if (!empty($submittedInwardIds)) {
+                        InwardProduct::where('inward_invoice_id', $invoiceInward->id)
+                            ->whereNotIn('id', $submittedInwardIds)
+                            ->delete();
                     }
                 }
 
@@ -176,9 +213,14 @@ class PurchaseController extends Controller
                 $freight = (float)($purchaseData['inward_acc_freight_amount'] ?? 0);
                 $parcel  = (float)($purchaseData['inward_acc_parcel_amount'] ?? 0);
                 $freightTotal = $freight + $parcel;
+                $billDiscAmt = (float)($purchaseData['bill_discount_amount'] ?? 0);
+                $cashDiscAmt = (float)($purchaseData['cash_discount_amount'] ?? 0);
+                $totalDiscAmt = $billDiscAmt + $cashDiscAmt;
+                $otherAmt = (float)($purchaseData['other_amount'] ?? 0);
+                $expAmt   = (float)($purchaseData['expense_amount'] ?? 0);
 
-                // Re-calculate the grand total and round off with freight and parcel included
-                $subtotal = $totTaxable + $totCgst + $totSgst + $totIgst + $freightTotal;
+                // Re-calculate the grand total and round off with all charges and discounts included
+                $subtotal = $totTaxable + $totCgst + $totSgst + $totIgst + $freightTotal + $otherAmt + $expAmt - $totalDiscAmt;
                 $grandRounded = (float)round($subtotal, 0);
                 $roundOff = (float)($grandRounded - $subtotal);
                 $grand = $grandRounded;
@@ -203,6 +245,14 @@ class PurchaseController extends Controller
 
                 $freightAccountId = Account::whereIn('code', ['EXP_FREIGHT', 'FRT_IN'])->value('id')
                     ?? Account::where('name', 'like', '%Freight%')->value('id');
+
+                $discountAccountId = Account::whereIn('code', ['INC_DISC_REC', 'DISC_REC', 'DISCOUNT_RECEIVED'])->value('id')
+                    ?? Account::where('name', 'like', '%Discount%')->value('id');
+
+                $otherChargesAccountId = Account::whereIn('code', ['EXP_OTHER', 'OTHER_EXP', 'OTHER_CHARGES', 'OTHERAC_144'])->value('id')
+                    ?? Account::where('name', 'OTHER A/C')->value('id')
+                    ?? Account::where('name', 'like', '%Other Charges%')->value('id')
+                    ?? Account::where('name', 'like', '%Other Exp%')->value('id');
 
                 // ✅ 3. Build Voucher Entries
                 $entries = [];
@@ -257,6 +307,27 @@ class PurchaseController extends Controller
                     ];
                 }
 
+                // Other Expenses / Charges Debit
+                $otherTotal = $otherAmt + $expAmt;
+                if (abs($otherTotal) >= 0.01) {
+                    $entries[] = [
+                        'account_id' => $otherChargesAccountId ?? $freightAccountId,
+                        'type' => $otherTotal > 0 ? 'Dr' : 'Cr',
+                        'amount' => abs($otherTotal),
+                        'description' => 'Other Charges / Expenses'
+                    ];
+                }
+
+                // Discount Received Credit
+                if ($totalDiscAmt > 0) {
+                    $entries[] = [
+                        'account_id' => $discountAccountId ?? $purchaseAccountId,
+                        'type' => 'Cr',
+                        'amount' => $totalDiscAmt,
+                        'description' => 'Discount Received'
+                    ];
+                }
+
                 // ✅ Round Off Entry: Positive → Dr, Negative → Cr
                 if (abs($roundOff) >= 0.01) {
                     $entries[] = [
@@ -279,7 +350,9 @@ class PurchaseController extends Controller
 
                 $financialYear = FinancialYear::where('start_date', '<=', $date)
                     ->where('end_date', '>=', $date)
-                    ->where('is_active', 1)
+                    // Which year a transaction BELONGS to is decided by its date alone.
+                    // Filtering on is_active here sent every backdated entry to the
+                    // fallback year once only the current year was left active.
                     ->first();
 
                 // ✅ 4. Create Voucher
@@ -359,10 +432,9 @@ class PurchaseController extends Controller
     public function purchaseProduct(Request $request)
     {
         $search = $request->search;
-        $isKachi = $request->is_kachi;
 
         $inwardLists = ProductPurchase::with([
-            'inwardInvoice:id,inward_voucher_no,inward_date,inward_challan_no,inward_challan_date,inward_party_code,inward_acc_gst_amount,inward_acc_net_amount,inward_acc_amt_with_gst,is_kachi',
+            'inwardInvoice:id,inward_voucher_no,inward_date,inward_challan_no,inward_challan_date,inward_party_code,inward_acc_gst_amount,inward_acc_net_amount,inward_acc_amt_with_gst',
             'inwardInvoice.partyCode:id,accountName,accountshortcode,cont_info_mobile1,tax_info_gst_no',
             'inwardInvoice.inwardProduct:id,inward_invoice_id,is_online_product'
         ])
@@ -379,26 +451,6 @@ class PurchaseController extends Controller
                 });
 
             })
-            ->when($isKachi !== null && $isKachi !== '', function($query) use ($isKachi) {
-                if ($isKachi == 1 || $isKachi === '1' || $isKachi === true || $isKachi === 'true') {
-                    return $query->whereHas('inwardInvoice', function($q) {
-                        $q->where('is_kachi', 1);
-                    });
-                } else {
-                    return $query->whereHas('inwardInvoice', function($q) {
-                        $q->where(function($subQ) {
-                            $subQ->where('is_kachi', 0)->orWhereNull('is_kachi');
-                        });
-                    });
-                }
-            }, function($query) {
-                // Default: show ONLY normal/non-Kachi entries
-                return $query->whereHas('inwardInvoice', function($q) {
-                    $q->where(function($subQ) {
-                        $subQ->where('is_kachi', 0)->orWhereNull('is_kachi');
-                    });
-                });
-            })
             ->latest()
             ->paginate(20)
             ->withQueryString();
@@ -409,11 +461,6 @@ class PurchaseController extends Controller
                 compact('inwardLists')
             )->render();
         }
-
-        return view(
-            'shop.purchase-product.partials.purchase-list',
-            compact('inwardLists')
-        );
     }
 
     public function view($id)
@@ -912,8 +959,13 @@ class PurchaseController extends Controller
                 $productPurchase->save();
             }
 
-            $totalCount = InwardProduct::where('inward_invoice_id', $inwardInvoiceId)->count();
-            $onlineCount = InwardProduct::where('inward_invoice_id', $inwardInvoiceId)->where('is_online_product', 1)->count();
+            $totalCount = InwardProduct::where('inward_invoice_id', $inwardInvoiceId)
+                ->whereHas('productBarcode')
+                ->count();
+            $onlineCount = InwardProduct::where('inward_invoice_id', $inwardInvoiceId)
+                ->whereHas('productBarcode')
+                ->where('is_online_product', 1)
+                ->count();
 
             DB::commit();
 
@@ -969,14 +1021,14 @@ class PurchaseController extends Controller
 
         $product->brand_id = $sourceProduct->brand_id ?? null;
         $product->unit_id = $sourceProduct->unit_id ?? null;
-        $product->price = $inwardProduct->price ?? 0;
+        $product->price = (!empty($inwardProduct->mrp) && $inwardProduct->mrp > 0) ? $inwardProduct->mrp : ($inwardProduct->price ?? 0);
         $product->buy_price = $inwardProduct->buy_price ?? 0;
-        $product->discount_price = $inwardProduct->discount_price ?? 0;
+        $product->discount_price = 0; // Decouple vendor purchase discount from retail selling discount
         $product->quantity = $inwardProduct->quantity ?? 0;
         $product->mrp = $inwardProduct->mrp ?? 0;
         $product->min_order_quantity = 1;
-        $product->is_active = true;
-        $product->is_approve = false;
+        $product->is_active = false; // Status active after view product by shop admin
+        $product->is_approve = true; // Auto-approved without super admin approval
         $product->is_online_product = true;
         $product->is_update_product = true;
         $product->is_publish_online = false;
@@ -1009,10 +1061,13 @@ class PurchaseController extends Controller
     private function updateExistingProduct($existingProduct, $inwardProduct)
     {
         // ✅ Update prices (use latest)
-        $existingProduct->price = $inwardProduct->price ?? $existingProduct->price;
+        $existingProduct->price = (!empty($inwardProduct->mrp) && $inwardProduct->mrp > 0) ? $inwardProduct->mrp : $existingProduct->price;
         $existingProduct->buy_price = $inwardProduct->buy_price ?? $existingProduct->buy_price;
         $existingProduct->mrp = $inwardProduct->mrp ?? $existingProduct->mrp;
-        $existingProduct->discount_price = $inwardProduct->discount_price ?? $existingProduct->discount_price;
+        // Decouple vendor purchase discount - do not overwrite customer retail discount with vendor discount
+        if ($existingProduct->discount_price == ($inwardProduct->discount_price ?? 0)) {
+            $existingProduct->discount_price = 0;
+        }
 
         // ✅ Add quantity (don't replace)
         $existingProduct->quantity += $inwardProduct->quantity ?? 0;
@@ -1039,8 +1094,7 @@ class PurchaseController extends Controller
         $existingProduct->is_online_product = true;
         $existingProduct->is_update_product = true;
         $existingProduct->is_publish_online = false;
-        $existingProduct->is_active = true;
-        $existingProduct->is_approve = false;
+        $existingProduct->is_approve = true; // Auto-approved without super admin approval
 
         $existingProduct->save();
 

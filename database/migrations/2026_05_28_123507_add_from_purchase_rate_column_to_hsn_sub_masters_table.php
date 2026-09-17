@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('hsn_sub_masters', function (Blueprint $table) {
-            $table->decimal('from_purchase_rate', 10, 2)->after('to_sales_rate')->default(0.00);
+            $table->decimal('from_purchase_rate', 16, 2)->after('to_sales_rate')->default(0.00);
         });
     }
 

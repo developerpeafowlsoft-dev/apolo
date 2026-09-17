@@ -23,12 +23,29 @@ class AccountMasterController extends Controller
         $this->gstService = $gstService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $shop = generaleSetting('shop');
-        $accountMasters = AccountMaster::basicFields()->with(['account:id,name,code','city:id,name'])->where('shop_id',$shop->id)->paginate(10);
-//dd($accountMasters);
-        return view('shop.account-master.index',compact('accountMasters'));
+        $rootShop = generaleSetting('rootShop');
+        $currentShop = generaleSetting('shop');
+        $shopIds = array_filter(array_unique([$rootShop?->id, $currentShop?->id, 1, 14]));
+        $search = $request->search ?? null;
+
+        $accountMasters = AccountMaster::basicFields()
+            ->with(['account:id,name,code', 'city:id,name'])
+            ->whereIn('shop_id', $shopIds)
+            ->when($search, function ($query) use ($search) {
+                return $query->where(function ($q) use ($search) {
+                    $q->where('accountName', 'like', '%' . $search . '%')
+                      ->orWhere('tax_info_gst_no', 'like', '%' . $search . '%')
+                      ->orWhere('cont_info_mobile1', 'like', '%' . $search . '%')
+                      ->orWhere('contperson', 'like', '%' . $search . '%');
+                });
+            })
+            ->latest('id')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('shop.account-master.index', compact('accountMasters', 'search'));
     }
 
     public function create()
@@ -55,7 +72,7 @@ class AccountMasterController extends Controller
         $request->merge([
             'cont_info_send_sms' => $request->has('cont_info_send_sms') ? 1 : 0,
             'cont_info_dndactivate' => $request->has('cont_info_dndactivate') ? 1 : 0,
-
+            'is_party_code' => $request->has('is_party_code') ? 1 : 0,
 
             'tax_info_tds_deduct' => $request->has('tax_info_tds_deduct') ? 1 : 0,
             'tax_info_tcs_deduct' => $request->has('tax_info_tcs_deduct') ? 1 : 0,
@@ -88,7 +105,7 @@ class AccountMasterController extends Controller
         $request->merge([
             'cont_info_send_sms' => $request->has('cont_info_send_sms') ? 1 : 0,
             'cont_info_dndactivate' => $request->has('cont_info_dndactivate') ? 1 : 0,
-
+            'is_party_code' => $request->has('is_party_code') ? 1 : 0,
 
             'tax_info_tds_deduct' => $request->has('tax_info_tds_deduct') ? 1 : 0,
             'tax_info_tcs_deduct' => $request->has('tax_info_tcs_deduct') ? 1 : 0,
@@ -106,6 +123,15 @@ class AccountMasterController extends Controller
         ]);
 
         return back()->withSuccess(__('Status updated successfully'));
+    }
+
+    public function partyCodeToggle(AccountMaster $accountMaster)
+    {
+        $accountMaster->update([
+            'is_party_code' => ! $accountMaster->is_party_code,
+        ]);
+
+        return back()->withSuccess(__('Party Code status updated successfully'));
     }
 
     public function citiesSearch(Request $request)

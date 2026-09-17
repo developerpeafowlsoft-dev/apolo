@@ -80,15 +80,6 @@
             </span>
         </a>
     </li>
-    <!--- Cashier Performance Report --->
-    <li>
-        <a class="menu {{ request()->routeIs('shop.cashier-report.*') ? 'active' : '' }}" href="{{ route('shop.cashier-report.index') }}">
-            <span>
-                <i class="fa-solid fa-user-check menu-icon text-muted" style="font-size: 16px; margin-right: 12px; width: 18px; text-align: center; display: inline-block;"></i>
-                {{ __('Cashier Performance') }}
-            </span>
-        </a>
-    </li>
 @endhasPermission
 
 @php
@@ -979,6 +970,16 @@
     </a>
 </li>
 @endhasPermission
+<li>
+    <a href="{{ route('admin.data-migration.index') }}"
+       class="menu {{ request()->routeIs('admin.data-migration*') ? 'active' : '' }}">
+            <span>
+                <img class="menu-icon" src="{{ asset('assets/icons-admin/database.svg') }}" alt="icon"
+                     loading="lazy" />
+                {{ __('Data Migration') }}
+            </span>
+    </a>
+</li>
 <li>
     <a href="javascript:void(0)" class="menu logout">
         <span>

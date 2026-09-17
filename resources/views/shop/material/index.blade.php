@@ -1,17 +1,10 @@
 @extends('layouts.app')
 @section('header-title', __('Material List'))
-
 @section('content')
     <div class="d-flex align-items-center flex-wrap gap-3 justify-content-between px-3">
         <h4>
             {{ __('Material List') }}
         </h4>
-        <div>
-            <button type="button" data-bs-toggle="modal" data-bs-target="#createMaterial" class="btn py-2 btn-primary">
-                <i class="bi bi-patch-plus"></i>
-                {{ __('Create New') }}
-            </button>
-        </div>
     </div>
 
     <div class="container-fluid mt-3">
@@ -26,41 +19,67 @@
                 <div class="table-responsive">
                     <table class="table border-left-right table-responsive-md">
                         <thead>
-                            <tr>
-                                <th class="text-center">{{ __('SL') }}</th>
-                                <th>{{ __('Code') }}</th>
-                                <th>{{ __('Name') }}</th>
-                                <th>{{ __('Created By') }}</th>
-                                <th>{{ __('Status') }}</th>
-                            </tr>
+                        <tr>
+                            <th class="text-center">{{ __('SL') }}</th>
+                            <th>{{ __('Code') }}</th>
+                            <th>{{ __('Name') }}</th>
+                            <th>{{ __('Status') }}</th>
+                            <th class="text-center">{{ __('Action') }}</th>
+                        </tr>
                         </thead>
                         <tbody>
                         @forelse($materials as $key => $material)
                             @php
                                 $serial = $materials->firstItem() + $key;
+                                $userShopId = $currentShopId ?? (auth()->user()?->shop?->id ?? auth()->user()?->myShop?->id ?? auth()->user()?->shop_id);
                             @endphp
                             <tr>
                                 <td class="text-center">{{ $serial }}</td>
                                 <td>{{ $material->code }}</td>
                                 <td>{{ $material->name }}</td>
                                 <td>
-                                    @if($material->shop_id && $material->shop_id != $rootShop?->id && $material->shop)
-                                        <span class="badge rounded-pill text-bg-info px-2 py-1" style="font-size: 12px;">
-                                            {{ $material->shop->name }}
-                                        </span>
-                                    @else
-                                        <span class="badge rounded-pill text-bg-secondary px-2 py-1" style="font-size: 12px;">
-                                            {{ __('Super Admin') }}
-                                        </span>
-                                    @endif
-                                </td>
-                                <td>
                                     <label class="switch mb-0">
-                                        <a href="{{ route('shop.material.toggle', $material->id) }}">
+                                        <a href="javascript:void(0)">
                                             <input type="checkbox" {{ $material->is_active ? 'checked' : '' }}>
                                             <span class="slider round"></span>
                                         </a>
                                     </label>
+                                </td>
+                                <td class="text-center">
+                                    @if($material->isOwnedByShop($userShopId))
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <button type="button" class="btn btn-outline-primary circleIcon btn-sm" onclick="openUpdateModal({{ $material }})" title="{{ __('Edit') }}">
+                                                <img src="{{ asset('assets/icons-admin/edit.svg') }}" alt="edit" loading="lazy" />
+                                            </button>
+
+                                            <button type="button" class="btn btn-outline-danger circleIcon btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $material->id }}" title="{{ __('Delete') }}">
+                                                <img src="{{ asset('assets/icons-admin/trash.svg') }}" alt="delete" loading="lazy" />
+                                            </button>
+                                        </div>
+
+                                        <!-- Delete Modal -->
+                                        <div class="modal fade" id="deleteModal{{ $material->id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">{{ __('Confirm Delete') }}</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body text-start">
+                                                        <p>{{ __('Are you sure you want to delete material') }} <strong>{{ $material->name }}</strong>?</p>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                                                        <form action="{{ route('shop.material.destroy', $material->id) }}" method="POST" class="d-inline">
+                                                            @csrf
+                                                             @method('DELETE')
+                                                            <button type="submit" class="btn btn-danger">{{ __('Delete') }}</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -80,41 +99,45 @@
 
     </div>
 
-    <!--=== Create Material Modal ===-->
-    <form action="{{ route('shop.material.store') }}" method="POST">
+    <!--=== Edit Material Modal ===-->
+    <form action="" id="formEditMaterial" method="POST">
         @csrf
-        <div class="modal fade" id="createMaterial" tabindex="-1" aria-labelledby="createMaterialLabel" aria-hidden="true">
+        @method('PUT')
+        <div class="modal fade" id="updateMaterial" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="createMaterialLabel">
-                            {{ __('Create Material') }}
+                        <h5 class="modal-title">
+                            {{ __('Edit Material') }}
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body" style="text-align: left">
+
                         <div class="mb-3">
                             <label class="form-label d-flex align-items-center gap-2 justify-content-between">
-                                <span>{{ __('Code') }} <span class="text-danger">*</span></span>
+                                <div class="d-flex align-items-center gap-2">
+                                <span>
+                                    {{ __('Code') }}
+                                    <span class="text-danger">*</span>
+                                </span>
+                                </div>
                             </label>
                             <div class="input-group flex-nowrap">
-                                <input type="text" class="form-control disabledCls" name="code" placeholder="{{ __('Code') }}" id="shortCode" value="" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4);" required readonly>
-                                <button class="btn btn-secondary" type="button" id="generateShortCode" onclick="generateCode()" data-bs-toggle="tooltip" title="{{ __('Generate Code') }}">
-                                    <i class="bi bi-arrow-repeat"></i>
-                                </button>
+                                <input type="text" class="form-control disabledCls @error('code') is-invalid @enderror" placeholder="Code" name="code" id="editCode" value="{{ old('code') }}" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4);" required="true" readonly>
                             </div>
-                            @if(isset($errors) && $errors->has('code'))
-                                <span class="text-danger small">{{ $errors->first('code') }}</span>
-                            @endif
+                            @error('code')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
                         </div>
 
                         <div class="mb-3">
-                            <label for="name" class="form-label">{{ __('Name') }} <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="name" name="name"
-                                placeholder="{{ __('Enter Material Name') }}" required />
-                            @if(isset($errors) && $errors->has('name'))
-                                <p class="text text-danger m-0">{{ $errors->first('name') }}</p>
-                            @endif
+                            <label for="editName" class="form-label">{{ __('Name') }} *</label>
+                            <input type="text" class="form-control" id="editName" name="name"
+                                   placeholder="Enter Name" value="" required />
+                            @error('name')
+                            <p class="text text-danger m-0">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -122,27 +145,24 @@
                             {{ __('Close') }}
                         </button>
                         <button type="submit" class="btn btn-primary">
-                            {{ __('Submit') }}
+                            {{ __('Update') }}
                         </button>
                     </div>
                 </div>
             </div>
         </div>
     </form>
-@endsection
 
 @push('scripts')
     <script>
-        const codeInput = document.getElementById('shortCode');
-        if (codeInput) {
-            codeInput.value = Math.floor(Math.random() * 9000) + 1000;
-        }
+        const openUpdateModal = (material) => {
+            $("#editName").val(material.name);
+            $("#editCode").val(material.code);
 
-        const generateCode = () => {
-            const codeInput = document.getElementById('shortCode');
-            if (codeInput) {
-                codeInput.value = Math.floor(Math.random() * 9000) + 1000;
-            }
+            $("#formEditMaterial").attr('action', `{{ route('shop.material.update', ':id') }}`.replace(':id', material.id));
+
+            $("#updateMaterial").modal('show');
         }
     </script>
 @endpush
+@endsection

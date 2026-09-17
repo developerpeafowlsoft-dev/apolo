@@ -6,12 +6,6 @@
         <h4>
             {{ __('Unit List') }}
         </h4>
-        <div>
-            <button type="button" data-bs-toggle="modal" data-bs-target="#createUnit" class="btn py-2 btn-primary">
-                <i class="bi bi-patch-plus"></i>
-                {{ __('Create New') }}
-            </button>
-        </div>
     </div>
 
     <div class="container-fluid mt-3">
@@ -19,41 +13,69 @@
         <div class="mb-3 card">
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table border-left-right table-responsive-md">
+                    <table class="table table-responsive-md">
                         <thead>
                             <tr>
                                 <th class="text-center">{{ __('SL') }}</th>
                                 <th>{{ __('Name') }}</th>
-                                <th>{{ __('Created By') }}</th>
                                 <th>{{ __('Status') }}</th>
+                                <th class="text-center">{{ __('Action') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                         @forelse($units as $key => $unit)
                             @php
                                 $serial = $units->firstItem() + $key;
+                                $userShopId = $currentShopId ?? (auth()->user()?->shop?->id ?? auth()->user()?->myShop?->id ?? auth()->user()?->shop_id);
                             @endphp
                             <tr>
                                 <td class="text-center">{{ $serial }}</td>
                                 <td>{{ $unit->name }}</td>
-                                <td>
-                                    @if($unit->shop_id && $unit->shop_id != $rootShop?->id && $unit->shop)
-                                        <span class="badge rounded-pill text-bg-info px-2 py-1" style="font-size: 12px;">
-                                            {{ $unit->shop->name }}
-                                        </span>
-                                    @else
-                                        <span class="badge rounded-pill text-bg-secondary px-2 py-1" style="font-size: 12px;">
-                                            {{ __('Super Admin') }}
-                                        </span>
-                                    @endif
-                                </td>
+
                                 <td>
                                     <label class="switch mb-0">
-                                        <a href="{{ route('shop.unit.toggle', $unit->id) }}">
+                                        <a href="javascript:void(0)">
                                             <input type="checkbox" {{ $unit->is_active ? 'checked' : '' }}>
                                             <span class="slider round"></span>
                                         </a>
                                     </label>
+                                </td>
+                                <td class="text-center">
+                                    @if($unit->isOwnedByShop($userShopId))
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <button type="button" class="btn btn-outline-primary btn-sm circleIcon"
+                                                onclick="openUnitUpdateModal({{ $unit }})" title="{{ __('Edit') }}">
+                                                <img src="{{ asset('assets/icons-admin/edit.svg') }}" alt="edit" loading="lazy"/>
+                                            </button>
+
+                                            <button type="button" class="btn btn-outline-danger circleIcon btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $unit->id }}" title="{{ __('Delete') }}">
+                                                <img src="{{ asset('assets/icons-admin/trash.svg') }}" alt="delete" loading="lazy" />
+                                            </button>
+                                        </div>
+
+                                        <!-- Delete Modal -->
+                                        <div class="modal fade" id="deleteModal{{ $unit->id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">{{ __('Confirm Delete') }}</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body text-start">
+                                                        <p>{{ __('Are you sure you want to delete unit') }} <strong>{{ $unit->name }}</strong>?</p>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                                                        <form action="{{ route('shop.unit.destroy', $unit->id) }}" method="POST" class="d-inline">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-danger">{{ __('Delete') }}</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -73,28 +95,30 @@
 
     </div>
 
-    <!--=== Create Unit Modal ===-->
-    <form action="{{ route('shop.unit.store') }}" method="POST">
+    <!--=== update unit Modal ===-->
+    <form action="" id="updateunit" method="POST">
         @csrf
-        <div class="modal fade" id="createUnit" tabindex="-1" aria-labelledby="createUnitLabel" aria-hidden="true">
+        @method('PUT')
+        <div class="modal fade" id="updateBrand" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="createUnitLabel">
-                            {{ __('Create Unit') }}
+                        <h5 class="modal-title">
+                            {{ __('Update Unit') }}
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="name" class="form-label">
-                                {{ __('Name') }} <span class="text-danger">*</span>
+                            <label for="updateName" class="form-label">
+                                {{ __('Name') }}
+                                <span class="text-danger">*</span>
                             </label>
-                            <input type="text" class="form-control" id="name" name="name"
-                                placeholder="{{ __('Enter Unit Name') }}" required />
-                            @if(isset($errors) && $errors->has('name'))
-                                <p class="text text-danger m-0">{{ $errors->first('name') }}</p>
-                            @endif
+                            <input type="text" class="form-control" id="updateName" name="name"
+                                placeholder="{{ __('Name') }}" required value="" />
+                            @error('name')
+                                <p class="text text-danger m-0">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -102,7 +126,7 @@
                             {{ __('Close') }}
                         </button>
                         <button type="submit" class="btn btn-primary">
-                            {{ __('Submit') }}
+                            {{ __('Update') }}
                         </button>
                     </div>
                 </div>
@@ -110,3 +134,13 @@
         </div>
     </form>
 @endsection
+
+@push('scripts')
+    <script>
+        const openUnitUpdateModal = (unit) => {
+            $("#updateName").val(unit.name);
+            $("#updateunit").attr('action', `{{ route('shop.unit.update', ':id') }}`.replace(':id', unit.id));
+            $("#updateBrand").modal('show');
+        }
+    </script>
+@endpush

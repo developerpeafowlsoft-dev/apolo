@@ -4700,22 +4700,8 @@
         $('#sales-grid-body tr:last .barcode-input').focus();
     }
 
-    function getSelectedCounterId() {
-        let cid = $('#selected-counter-id').val();
-        if (!cid) {
-            try {
-                const stored = localStorage.getItem('pos_selected_counter');
-                if (stored) {
-                    const c = JSON.parse(stored);
-                    cid = c.id;
-                }
-            } catch(e) {}
-        }
-        return cid || '';
-    }
-
     function loadHistoryStats() {
-        const counterId = getSelectedCounterId();
+        const counterId = $('#selected-counter-id').val();
         $.ajax({
             url: "{{ route('shop.pos.history.stats') }}",
             type: 'GET',
@@ -4744,7 +4730,7 @@
             status: $('#filter-status').val(),
             date_from: $('#filter-date-from').val(),
             date_to: $('#filter-date-to').val(),
-            counter_id: getSelectedCounterId()
+            counter_id: $('#selected-counter-id').val()
         };
 
         $.ajax({

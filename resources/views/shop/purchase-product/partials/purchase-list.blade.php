@@ -70,12 +70,7 @@
 
                 <!-- Voucher -->
                 <td class="col-voucher">
-                    <div class="d-flex align-items-center gap-1">
-                        <span class="fw-semibold text-primary" style="font-size: 13.5px;">{{ $invoice?->inward_voucher_no ?? '-' }}</span>
-                        @if(!empty($invoice?->is_kachi))
-                            <span class="badge bg-warning text-dark px-1.5 py-0.5" style="font-size: 10px;" title="{{ __('Kachi Entry') }}">Kachi</span>
-                        @endif
-                    </div>
+                    <div class="fw-semibold text-primary" style="font-size: 13.5px;">{{ $invoice?->inward_voucher_no ?? '-' }}</div>
                     <small class="text-muted font-monospace d-block" style="font-size: 11px;">
                         {{ !empty($invoice?->inward_date) ? $invoice->inward_date->format('d M, Y') : '-' }}
                     </small>
@@ -123,24 +118,34 @@
                 <td class="text-center">
                     @php
                         $inwardItems = $invoice?->inwardProduct ?? collect();
-                        $totalItemsCount = $inwardItems->count();
-                        $onlineItemsCount = $inwardItems->filter(fn($item) => (bool)($item->is_online_product ?? false))->count();
+                        $barcodedItems = $inwardItems->filter(fn($item) => \App\Models\ProductBarcode::where('inward_product_id', $item->id)->exists());
+                        $totalBarcodedCount = $barcodedItems->count();
+                        $onlineItemsCount = $barcodedItems->filter(fn($item) => (bool)($item->is_online_product ?? false))->count();
                     @endphp
-                    @if($onlineItemsCount > 0)
-                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 viewData cursor-pointer" 
-                              data-id="{{ $purchase->id }}" 
-                              data-bs-toggle="tooltip" 
-                              title="{{ __('Click to manage individual item online availability') }}"
-                              style="font-size: 11.5px; cursor: pointer;">
-                            <i class="bi bi-globe me-1"></i>{{ $onlineItemsCount }}/{{ $totalItemsCount }} {{ __('Online') }}
-                        </span>
+                    @if($totalBarcodedCount > 0)
+                        @if($onlineItemsCount > 0)
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 viewData cursor-pointer" 
+                                  data-id="{{ $purchase->id }}" 
+                                  data-bs-toggle="tooltip" 
+                                  title="{{ __('Click to manage individual item online availability') }}"
+                                  style="font-size: 11.5px; cursor: pointer;">
+                                <i class="bi bi-globe me-1"></i>{{ $onlineItemsCount }}/{{ $totalBarcodedCount }} {{ __('Online') }}
+                            </span>
+                        @else
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 viewData cursor-pointer" 
+                                  data-id="{{ $purchase->id }}" 
+                                  data-bs-toggle="tooltip" 
+                                  title="{{ __('Click to enable individual items for online selling') }}"
+                                  style="font-size: 11.5px; cursor: pointer;">
+                                <i class="bi bi-globe me-1"></i>0/{{ $totalBarcodedCount }} {{ __('Online') }}
+                            </span>
+                        @endif
                     @else
-                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 viewData cursor-pointer" 
-                              data-id="{{ $purchase->id }}" 
-                              data-bs-toggle="tooltip" 
-                              title="{{ __('Click to enable individual items for online selling') }}"
-                              style="font-size: 11.5px; cursor: pointer;">
-                            <i class="bi bi-globe me-1"></i>0/{{ $totalItemsCount }} {{ __('Online') }}
+                        <span class="badge bg-light text-muted border px-2 py-1 viewData cursor-pointer" 
+                              data-id="{{ $purchase->id }}"
+                              style="font-size: 11.5px; cursor: pointer;" 
+                              title="{{ __('Click to view details. Generate barcode first to sell online.') }}">
+                            {{ __('No Barcode') }}
                         </span>
                     @endif
                 </td>

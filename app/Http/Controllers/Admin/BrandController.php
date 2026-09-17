@@ -14,12 +14,10 @@ class BrandController extends Controller
      */
     public function index()
     {
-        $rootShop = generaleSetting('rootShop');
+        // Get all brands
+        $brands = Brand::latest('id')->paginate(20);
 
-        // Get all brands (Super Admin created + Shop created)
-        $brands = Brand::with('shop')->orderByDesc('id')->paginate(20)->withQueryString();
-
-        return view('admin.brand.index', compact('brands', 'rootShop'));
+        return view('admin.brand.index', compact('brands'));
     }
 
     /**
@@ -52,5 +50,21 @@ class BrandController extends Controller
         ]);
 
         return to_route('admin.brand.index')->withSuccess(__('Brand status updated'));
+    }
+
+    /**
+     * delete a brand (Super Admin can delete any brand)
+     */
+    public function destroy(Brand $brand)
+    {
+        $user = auth()->user();
+        if (! $user || (! $user->hasRole('root') && ! $user->can('admin.brand.destroy'))) {
+            abort(403, __('Unauthorized action. Only Super Admin can delete brands here.'));
+        }
+
+        $brand->translations()->delete();
+        $brand->delete();
+
+        return to_route('admin.brand.index')->withSuccess(__('Brand deleted successfully'));
     }
 }

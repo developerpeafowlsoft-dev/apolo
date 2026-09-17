@@ -5,9 +5,16 @@ namespace App\Http\Controllers\Shop;
 use App\Events\AdminProductRequestEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ItemMasterRequest;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Color;
+use App\Models\HsnMaster;
+use App\Models\Material;
 use App\Models\Product;
 use App\Models\Salesman;
+use App\Models\Size;
 use App\Models\SubCategory;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\VatTax;
 use App\Repositories\ItemMasterRepository;
@@ -27,9 +34,10 @@ class ItemMasterController extends Controller
 
         $rootShop = generaleSetting('rootShop');
         $shop = generaleSetting('shop');
+        $shopIds = array_unique(array_filter([1, $rootShop?->id, $shop?->id]));
 
         // filter products based on category, brand, color and search
-        $itemMasters = $shop?->products()->when($brand, function ($query) use ($brand) {
+        $itemMasters = Product::whereIn('shop_id', $shopIds)->when($brand, function ($query) use ($brand) {
             return $query->where('brand_id', $brand);
         })->when($category, function ($query) use ($category) {
             return $query->whereHas('categories', function ($query) use ($category) {
@@ -41,7 +49,7 @@ class ItemMasterController extends Controller
             });
         })->when($search, function ($query) use ($search) {
             return $query->where('name', 'like', "%$search%");
-        })->basicFields()->isItemmaster(1)->where('shop_id',$shop->id)->orderByDesc('id')->paginate(20)->withQueryString();
+        })->basicFields()->isItemmaster(1)->orderByDesc('id')->paginate(20)->withQueryString();
 //        dd($products);
 
         // get brands, colors and categories
@@ -58,17 +66,18 @@ class ItemMasterController extends Controller
 
     public function modalData()
     {
-        $shop = generaleSetting('rootShop');
+        $rootShop = generaleSetting('rootShop');
         $shopVendor = generaleSetting('shop');
+        $shopIds = array_unique(array_filter([1, $rootShop?->id, $shopVendor?->id]));
 
-        $brands = $shop?->brands()->isActive()->get();
-        $categories = $shop?->categories()->active()->get();
-        $colors = $shop?->colors()->isActive()->get();
+        $brands = Brand::whereIn('shop_id', $shopIds)->isActive()->get();
+        $categories = Category::active()->get();
+        $colors = Color::whereIn('shop_id', $shopIds)->isActive()->get();
         $taxs = VatTax::active()->get(['id', 'name', 'percentage']);
-        $sizes = $shop?->sizes()->isActive()->get();
-        $units = $shop?->units()->isActive()->get();
-        $materials = $shop?->materials()->isActive()->get();
-        $hsnMasters = $shopVendor?->hsnmasters()->isActive()->get();
+        $sizes = Size::whereIn('shop_id', $shopIds)->isActive()->get();
+        $units = Unit::isActive()->get();
+        $materials = Material::whereIn('shop_id', $shopIds)->isActive()->get();
+        $hsnMasters = HsnMaster::whereIn('shop_id', $shopIds)->isActive()->get();
         $salesmans = Salesman::active()->get(['id','name']);
 
 //        dd($shopVendor,$hsnMasters);

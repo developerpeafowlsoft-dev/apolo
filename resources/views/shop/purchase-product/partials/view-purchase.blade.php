@@ -193,7 +193,7 @@
                             <td><small class="text-dark">{{ $sizeName }}</small></td>
                             <td class="text-end font-monospace">₹{{ number_format((float)$item->buy_price, 2) }}</td>
                             <td class="text-end font-monospace">₹{{ number_format((float)$item->price, 2) }}</td>
-                            <td class="text-end font-monospace">{{ $item->discount_price }}</td>
+                            <td class="text-end font-monospace">{{ number_format((float)($item->discount_price ?? 0), 2) }}</td>
                             <td class="text-end font-monospace">₹{{ number_format((float)$item->mrp, 2) }}</td>
                             <td class="text-end font-monospace fw-semibold text-primary">₹{{ number_format((float)$item->net_purc_rate, 2) }}</td>
                             <td class="text-center font-monospace small text-secondary">{{ $item->hsnMaster->hsn_code ?? '-' }}</td>
@@ -201,17 +201,21 @@
                                 <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size: 11px;">{{ $item->vatTax->percentage ?? 0 }}%</span>
                             </td>
                             <td class="text-center">
-                                <label class="switch mb-0">
-                                    <input type="checkbox" 
-                                           class="single-item-online-toggle" 
-                                           data-id="{{ $item->id }}" 
-                                           data-item-name="{{ $productName }}"
-                                           data-voucher="{{ $purchase->inwardInvoice->inward_voucher_no ?? '' }}"
-                                           data-online="{{ $isItemOnline ? '1' : '0' }}" 
-                                           data-barcode="{{ $hasBarcode ? '1' : '0' }}"
-                                           {{ $isItemOnline ? 'checked' : '' }}>
-                                    <span class="slider round"></span>
-                                </label>
+                                @if($hasBarcode)
+                                    <label class="switch mb-0">
+                                        <input type="checkbox" 
+                                               class="single-item-online-toggle" 
+                                               data-id="{{ $item->id }}" 
+                                               data-item-name="{{ $productName }}"
+                                               data-voucher="{{ $purchase->inwardInvoice->inward_voucher_no ?? '' }}"
+                                               data-online="{{ $isItemOnline ? '1' : '0' }}" 
+                                               data-barcode="{{ $hasBarcode ? '1' : '0' }}"
+                                               {{ $isItemOnline ? 'checked' : '' }}>
+                                        <span class="slider round"></span>
+                                    </label>
+                                @else
+                                    <span class="text-muted small font-monospace" title="{{ __('Barcode not generated') }}">-</span>
+                                @endif
                             </td>
                         </tr>
                     @empty

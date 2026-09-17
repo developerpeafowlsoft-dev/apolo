@@ -71,13 +71,13 @@ class ShopController extends Controller
 
         $shop = ShopRepository::find($request->shop_id);
 
-        $categories = $shop->categories()->active()->where(function ($query) use ($perPage, $page, $skip) {
+        $categories = $shop->categories()->active()->where('show_in_hero', 1)->where(function ($query) use ($perPage, $page, $skip) {
             $query->when($perPage && $page, function ($query) use ($perPage, $skip) {
                 return $query->skip($skip)->take($perPage);
             });
-        })->get();
+        })->latest('id')->get();
 
-        $total = $shop->categories->count();
+        $total = $shop->categories()->active()->where('show_in_hero', 1)->count();
 
         return $this->json('Shop categories', [
             'total' => $total,

@@ -16,58 +16,28 @@ class MaterialRequest extends FormRequest
     }
 
     /**
-     * Prepare the data for validation.
-     */
-    protected function prepareForValidation(): void
-    {
-        if ($this->has('name')) {
-            $this->merge([
-                'name' => trim((string) $this->name),
-            ]);
-        }
-        if ($this->has('code')) {
-            $this->merge([
-                'code' => trim((string) $this->code),
-            ]);
-        }
-    }
-
-    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        $materialId = $this->route('material')?->id ?? $this->id;
-
+        $id = $this->route('material')?->id;
         return [
             'name' => [
                 'required',
                 'string',
                 'max:255',
-                function ($attribute, $value, $fail) use ($materialId) {
-                    $trimmed = trim($value);
-                    if ($trimmed === '') return;
-
-                    $exists = \App\Models\Material::whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($trimmed)])
-                        ->when($materialId, function ($q) use ($materialId) {
-                            $q->where('id', '!=', $materialId);
-                        })
-                        ->exists();
-
-                    if ($exists) {
-                        $fail(__('This Name is already taken.'));
-                    }
-                },
+                Rule::unique('materials', 'name')->ignore($id),
             ],
             'code' => [
                 'required',
                 'string',
                 'max:4',
-                Rule::unique('materials', 'code')->ignore($materialId),
+                Rule::unique('materials', 'code')->ignore($id),
             ],
         ];
+
     }
 
     public function messages(): array

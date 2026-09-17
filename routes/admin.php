@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerNotificationController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DataMigrationController;
 use App\Http\Controllers\Admin\DeliveryChargeController;
 use App\Http\Controllers\Admin\EmployeeManageController;
 use App\Http\Controllers\Admin\FirebaseController;
@@ -154,6 +155,7 @@ Route::name('admin.')->group(function () {
             Route::put('/category/{category}/update', 'update')->name('category.update');
             Route::delete('/category/{category}/destroy', 'destroy')->name('category.destroy');
             Route::get('/category/{category}/toggle', 'statusToggle')->name('category.toggle');
+            Route::get('/category/{category}/hero-toggle', 'heroToggle')->name('category.hero-toggle');
         });
 
         // sub categories route
@@ -590,6 +592,18 @@ Route::name('admin.')->group(function () {
         Route::controller(FinancialYearController::class)->group(function (){
             Route::get('/financial','index')->name('financial.index');
 //            Route::post('/financial/store', 'store')->name('financial.store');
+        });
+
+        // Legacy ERP Data Migration
+        Route::controller(DataMigrationController::class)->group(function () {
+            Route::get('/data-migration', 'index')->name('data-migration.index');
+            Route::post('/data-migration/run-step', 'runStep')->name('data-migration.run-step');
+            Route::post('/data-migration/clear-step', 'clearStep')->name('data-migration.clear-step');
+            Route::post('/data-migration/upload-file', 'uploadFile')->name('data-migration.upload-file');
+            Route::post('/data-migration/check-page-health', 'checkPageHealth')->name('data-migration.check-page-health');
+            Route::get('/data-migration/reconciliation', 'reconciliation')->name('data-migration.reconciliation');
+            Route::post('/data-migration/correct-accounts', 'correctAccounts')->name('data-migration.correct-accounts');
+            Route::post('/data-migration/blank-accounts', 'blankAccounts')->name('data-migration.blank-accounts');
         });
     });
 });

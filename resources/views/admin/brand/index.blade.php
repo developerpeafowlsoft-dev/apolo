@@ -31,34 +31,20 @@
                             <tr>
                                 <th class="text-center">{{ __('SL') }}</th>
                                 <th>{{ __('Name') }}</th>
-                                <th>{{ __('Created By') }}</th>
                                 @hasPermission('admin.brand.toggle')
                                     <th>{{ __('Status') }}</th>
                                 @endhasPermission
-                                @hasPermission('admin.brand.edit')
                                     <th class="text-center">{{ __('Action') }}</th>
-                                @endhasPermission
                             </tr>
                         </thead>
+                        <tbody>
                         @forelse($brands as $key => $brand)
                             @php
                                 $serial = $brands->firstItem() + $key;
-                                $rootShop = $rootShop ?? generaleSetting('rootShop');
                             @endphp
                             <tr>
                                 <td class="text-center">{{ $serial }}</td>
                                 <td>{{ $brand->name }}</td>
-                                <td>
-                                    @if($brand->shop_id && $brand->shop_id != $rootShop?->id && $brand->shop)
-                                        <span class="badge rounded-pill text-bg-info px-2 py-1" style="font-size: 12px;">
-                                            {{ $brand->shop->name }}
-                                        </span>
-                                    @else
-                                        <span class="badge rounded-pill text-bg-secondary px-2 py-1" style="font-size: 12px;">
-                                            {{ __('Super Admin') }}
-                                        </span>
-                                    @endif
-                                </td>
                                 @hasPermission('admin.brand.toggle')
                                     <td>
                                         <label class="switch mb-0">
@@ -69,17 +55,47 @@
                                         </label>
                                     </td>
                                 @endhasPermission
-                                @hasPermission('admin.brand.edit')
-                                    <td class="text-center">
-                                        <div class="d-flex gap-3 justify-content-center">
-                                            <button type="button" class="btn btn-outline-primary btn-sm circleIcon"
-                                                onclick="openUpdateModal({{ $brand }})">
-                                                <img src="{{ asset('assets/icons-admin/edit.svg') }}" alt="edit" loading="lazy" />
-                                            </button>
+                                <td class="text-center">
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        @hasPermission('admin.brand.edit')
+                                        <button type="button" class="btn btn-outline-primary btn-sm circleIcon"
+                                            onclick="openUpdateModal({{ $brand }})" title="{{ __('Edit') }}">
+                                            <img src="{{ asset('assets/icons-admin/edit.svg') }}" alt="edit" loading="lazy" />
+                                        </button>
+                                        @endhasPermission
 
+                                        @hasPermission('admin.brand.destroy')
+                                        <button type="button" class="btn btn-outline-danger circleIcon btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $brand->id }}" title="{{ __('Delete') }}">
+                                            <img src="{{ asset('assets/icons-admin/trash.svg') }}" alt="delete" loading="lazy" />
+                                        </button>
+                                        @endhasPermission
+                                    </div>
+
+                                    @hasPermission('admin.brand.destroy')
+                                    <!-- Delete Modal -->
+                                    <div class="modal fade" id="deleteModal{{ $brand->id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">{{ __('Confirm Delete') }}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body text-start">
+                                                    <p>{{ __('Are you sure you want to delete brand') }} <strong>{{ $brand->name }}</strong>?</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                                                    <form action="{{ route('admin.brand.destroy', $brand->id) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-danger">{{ __('Delete') }}</button>
+                                                    </form>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </td>
-                                @endhasPermission
+                                    </div>
+                                    @endhasPermission
+                                </td>
                             </tr>
                         @empty
                             <tr>
@@ -117,9 +133,9 @@
                             <label for="name" class="form-label">{{ __('Name') }} <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="name" name="name"
                                 placeholder="Enter Name" required />
-                            @if(isset($errors) && $errors->has('name'))
-                                <p class="text text-danger m-0">{{ $errors->first('name') }}</p>
-                            @endif
+                            @error('name')
+                                <p class="text text-danger m-0">{{ $message }}</p>
+                            @enderror
                         </div>
 
                     </div>
@@ -154,9 +170,9 @@
                             <label for="name" class="form-label">{{ __('Name') }} *</label>
                             <input type="text" class="form-control" id="editName" name="name"
                                 placeholder="Enter Name" value="" required />
-                            @if(isset($errors) && $errors->has('name'))
-                                <p class="text text-danger m-0">{{ $errors->first('name') }}</p>
-                            @endif
+                            @error('name')
+                                <p class="text text-danger m-0">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
                     <div class="modal-footer">

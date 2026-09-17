@@ -5,13 +5,18 @@ namespace App\Http\Controllers\Shop;
 use App\Events\AdminProductRequestEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\InwardProductRequest;
+use App\Models\Color;
+use App\Models\CounterMaster;
 use App\Models\DesignMaster;
+use App\Models\HsnMaster;
 use App\Models\InwardInvoice;
 use App\Models\InwardProduct;
 use App\Models\MasterPrice;
 use App\Models\Product;
 use App\Models\ProductBarcode;
+use App\Models\Size;
 use App\Models\VatTax;
+use App\Models\AccountMaster;
 use App\Repositories\DesignMasterRepository;
 use App\Repositories\InwardInvoiceRepository;
 use App\Repositories\InwardProductRepository;
@@ -26,23 +31,13 @@ class InwardProductController extends Controller
     public function index(Request $request)
     {
         $shop = generaleSetting('shop');
+        $shop?->load('state:id,name');
         $rootShop = generaleSetting('rootShop');
 
-        $dayBooks = $shop?->counter()->get();
-        $inwardTaxs = VatTax::active()->get(['id', 'name', 'percentage']);
+        $dayBooks = CounterMaster::all();
+        $inwardTaxs = VatTax::all();
 
-        // Default Inward List: show ONLY normal/final inward entries (is_kachi = 0 or null)
-        $inwardLists = InwardInvoice::select('id','shop_id','counter_master_id','inward_voucher_no','inward_date','inward_challan_no','inward_challan_date','inward_party_code','inward_acc_gst_amount','inward_acc_net_amount','inward_acc_amt_with_gst','is_kachi')
-            ->with(['counter:id,code,counter_name','partyCode:id,accountName,accountshortcode,cont_info_mobile1,tax_info_gst_no','inwardProduct','inwardProduct.products:id,name','inwardProduct.designMaster:id,design_number','inwardProduct.vatTax:id,name,percentage','inwardProduct.hsnMaster:id,hsn_code'])
-            ->where(function($q) {
-                $q->where('is_kachi', 0)->orWhereNull('is_kachi');
-            })
-            ->where('shop_id',$shop->id)
-            ->orderByDesc('id')
-            ->paginate(20)
-            ->withQueryString();
-
-        return view('shop.inward-product.index',compact('dayBooks','inwardTaxs','inwardLists'));
+        return view('shop.inward-product.index',compact('dayBooks','inwardTaxs','shop'));
     }
 
 
@@ -50,32 +45,102 @@ class InwardProductController extends Controller
     {
         $shop = generaleSetting('shop');
         $rootShop = generaleSetting('rootShop');
+        $shopIds = array_unique(array_filter([1, 14, $shop?->id, $rootShop?->id]));
 
-
-        $itemSearch = $request->itemSearch ?? '';
-        $colorSearch = $request->colorSearch ?? '';
-        $sizeSearch = $request->sizeSearch ?? '';
-        $taxCodeSearch = $request->taxCodeSearch ?? '';
+        $itemSearch = $request->itemSearch ?? ($request->search ?? '');
+        $colorSearch = $request->colorSearch;
+        $sizeSearch = $request->sizeSearch;
+        $taxCodeSearch = $request->taxCodeSearch;
         $designNoSearch = $request->designNoSearch ?? '';
 
-
-        if (!empty($itemSearch) || !empty($designNoSearch)){
-            $designWithItemData = $shop?->designMasters()->active()
-                ->when($itemSearch, function ($query) use ($itemSearch) {
-                    $query->whereHas('products', function($q) use ($itemSearch) {
-                        $q->where('name', 'like', "%$itemSearch%");
+        if ($request->has('colorSearch')){
+            $term = trim($request->colorSearch ?? '');
+            $designWithColorData = Color::where('is_active', 1)
+                ->when($term !== '', function($q) use ($term) {
+                    $q->where(function($sq) use ($term) {
+                        $sq->where('name', 'like', "%{$term}%")
+                           ->orWhere('color_code', 'like', "%{$term}%");
                     });
                 })
-                ->when($designNoSearch, function ($query) use ($designNoSearch) {
-                    $query->where('design_number', 'like', "%{$designNoSearch}%");
+                ->orderByRaw("CASE WHEN name = ? THEN 0 WHEN name LIKE ? THEN 1 ELSE 2 END", [$term, "{$term}%"])
+                ->orderBy('name', 'ASC')
+                ->limit(150)
+                ->get(['id', 'name', 'color_code']);
+
+            return response()->json([
+                'designWithColorData' => $designWithColorData,
+                'status' => true
+            ]);
+        }
+
+        if ($request->has('sizeSearch')){
+            $term = trim($request->sizeSearch ?? '');
+            $designWithSizeData = Size::where('is_active', true)
+                ->when($term !== '', function($q) use ($term) {
+                    $q->where('name', 'like', "%{$term}%");
                 })
-                ->with(['products:id,name,hsn_master_id,vat_tax_id','products.hsnMaster:id,hsn_code','products.vatTax:id,percentage'])
-                ->get();
+                ->orderByRaw("CASE WHEN name = ? THEN 0 WHEN name LIKE ? THEN 1 ELSE 2 END", [$term, "{$term}%"])
+                ->orderByRaw("CAST(name AS UNSIGNED) ASC, name ASC")
+                ->limit(200)
+                ->get(['id', 'name']);
+
+            return response()->json([
+                'designWithSizeData' => $designWithSizeData,
+                'status' => true
+            ]);
+        }
+
+        if ($request->has('taxCodeSearch')){
+            $term = trim($request->taxCodeSearch ?? '');
+            $designWithtaxCodeData = HsnMaster::where('is_active', true)
+                ->with([
+                    'vattax:id,percentage',
+                    'subHsn.vattax:id,name,percentage'
+                ])
+                ->when($term !== '', function($q) use ($term) {
+                    $q->where('hsn_code', 'like', "%{$term}%");
+                })
+                ->orderByRaw("CASE WHEN hsn_code = ? THEN 0 WHEN hsn_code LIKE ? THEN 1 ELSE 2 END", [$term, "{$term}%"])
+                ->orderBy('hsn_code', 'ASC')
+                ->limit(100)
+                ->get(['id', 'hsn_code', 'vat_tax_id']);
+
+            return response()->json([
+                'designWithtaxCodeData' => $designWithtaxCodeData,
+                'status' => true
+            ]);
+        }
+
+        if ($request->has('itemSearch') || $request->has('designNoSearch') || $request->has('search') || !empty($itemSearch) || !empty($designNoSearch)){
+            $searchTerm = !empty($itemSearch) ? $itemSearch : $designNoSearch;
+
+            $designWithItemData = $shop?->designMasters()->active()
+                ->when($searchTerm, function ($query) use ($searchTerm) {
+                    $query->where(function($q) use ($searchTerm) {
+                        $q->whereHas('products', function($pq) use ($searchTerm) {
+                            $pq->where('name', 'like', "%$searchTerm%");
+                        })
+                        ->orWhere('design_number', 'like', "%$searchTerm%");
+                    });
+                })
+                ->with([
+                    'products:id,name,hsn_master_id,vat_tax_id',
+                    'products.hsnMaster:id,hsn_code,vat_tax_id',
+                    'products.hsnMaster.subHsn.vattax:id,name,percentage',
+                    'products.vatTax:id,percentage'
+                ])
+                ->latest()
+                ->limit(40)
+                ->get() ?? collect();
 
             $suggestions = collect();
+            $seenProductIds = [];
 
             // Add existing designs to suggestions
             foreach ($designWithItemData as $design) {
+                if ($design->products) {
+                    $seenProductIds[] = $design->products->id;
+                }
                 $suggestions->push([
                     'id' => $design->id,
                     'design_number' => $design->design_number,
@@ -91,111 +156,51 @@ class InwardProductController extends Controller
             }
 
             // Search product master directly for matching products
-            if ($itemSearch) {
-                $matchingProducts = Product::where('shop_id', $shop->id)
-                    ->where('name', 'like', "%$itemSearch%")
-                    ->with(['hsnMaster:id,hsn_code', 'vatTax:id,percentage'])
-                    ->get();
+            $matchingProducts = Product::whereIn('shop_id', $shopIds)
+                ->when($searchTerm, function ($query) use ($searchTerm) {
+                    $query->where('name', 'like', "%$searchTerm%");
+                })
+                ->whereNotIn('id', $seenProductIds)
+                ->with([
+                    'hsnMaster:id,hsn_code,vat_tax_id',
+                    'hsnMaster.subHsn.vattax:id,name,percentage',
+                    'vatTax:id,percentage'
+                ])
+                ->latest()
+                ->limit(20)
+                ->get();
 
-                foreach ($matchingProducts as $prod) {
-                    $suggestions->push([
-                        'id' => '',
-                        'design_number' => '',
-                        'buy_price' => '',
-                        'mrp' => '',
-                        'mark_up' => '',
-                        'mark_down' => '',
-                        'discount_percentage' => '',
-                        'price' => '',
-                        'quantity' => '',
-                        'products' => [
-                            'id' => $prod->id,
-                            'name' => $prod->name,
-                            'hsn_master_id' => $prod->hsn_master_id,
-                            'vat_tax_id' => $prod->vat_tax_id,
-                            'hsn_master' => $prod->hsnMaster,
-                            'vat_tax' => $prod->vatTax
-                        ]
-                    ]);
-                }
+            foreach ($matchingProducts as $prod) {
+                $suggestions->push([
+                    'id' => '',
+                    'design_number' => '',
+                    'buy_price' => '',
+                    'mrp' => '',
+                    'mark_up' => '',
+                    'mark_down' => '',
+                    'discount_percentage' => '',
+                    'price' => '',
+                    'quantity' => '',
+                    'products' => [
+                        'id' => $prod->id,
+                        'name' => $prod->name,
+                        'hsn_master_id' => $prod->hsn_master_id,
+                        'vat_tax_id' => $prod->vat_tax_id,
+                        'hsn_master' => $prod->hsnMaster,
+                        'vat_tax' => $prod->vatTax
+                    ]
+                ]);
             }
 
             return response()->json([
                 'designWithItemData' => $suggestions,
                 'status' => true
             ]);
-        }elseif (!empty($colorSearch)){
-//            dd("Hello",$request->colorSearch);
-            if ($request->colorSearch){
-                $designWithColorData = $rootShop?->colors()->Isactive()
-                    ->where('name', 'like', '%' . $colorSearch . '%')
-                    ->get(['id','name']);
-
-                if (!empty($designWithColorData)){
-                    return response()->json([
-                        'designWithColorData' => $designWithColorData,
-                        'status' => true
-                    ]);
-                }
-            }
-
-        }elseif (!empty($sizeSearch)){
-            if ($request->sizeSearch){
-                $designWithSizeData = $rootShop?->sizes()->Isactive()
-                    ->where('name', 'like', '%' . $sizeSearch . '%')
-                    ->get(['id','name']);
-
-                if (!empty($designWithSizeData)){
-                    return response()->json([
-                        'designWithSizeData' => $designWithSizeData,
-                        'status' => true
-                    ]);
-                }
-            }
-        }elseif (!empty($taxCodeSearch)){
-            if ($request->taxCodeSearch){
-                $designWithtaxCodeData = $shop?->hsnmasters()->Isactive()
-                    ->with('vattax:id,percentage')
-                    ->where('hsn_code', 'like', '%' . $taxCodeSearch . '%')
-                    ->get(['id','hsn_code','vat_tax_id']);
-//dd($taxCodeSearch,$designWithtaxCodeData);
-                if (!empty($designWithtaxCodeData)){
-                    return response()->json([
-                        'designWithtaxCodeData' => $designWithtaxCodeData,
-                        'status' => true
-                    ]);
-                }
-            }
         }
+
         return response()->json([
             'message' => 'No data found',
             'status' => false
-        ]);
-    }
-
-    public function getNextKachiSequence(Request $request)
-    {
-        $shop = generaleSetting('shop');
-        $shopId = $shop?->id;
-
-        $lastKachi = InwardInvoice::where('shop_id', $shopId)
-            ->where('is_kachi', 1)
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $nextNum = 1;
-        if ($lastKachi && !empty($lastKachi->inward_voucher_no)) {
-            $numericVal = (int) preg_replace('/\D/', '', $lastKachi->inward_voucher_no);
-            if ($numericVal > 0) {
-                $nextNum = $numericVal + 1;
-            }
-        }
-
-        $formatted = sprintf('%06d', $nextNum);
-
-        return response()->json([
-            'status' => true,
-            'sequence' => $formatted
         ]);
     }
 
@@ -205,74 +210,36 @@ class InwardProductController extends Controller
 
 
         if (!empty($request->rows)) {
-            $invoiceHeaderData = $request->invoiceData;
+            // Inward Invoice Save
+            $inwardData = InwardInvoiceRepository::storeByInwardInvoiceRequest($request->invoiceData);
+
             $rows = $request->rows;
-            $isKachi = !empty($invoiceHeaderData['is_kachi']) ? true : false;
+            $partyId = $inwardData->inward_party_code ?? ($request->invoiceData['inward_party_code'] ?? null);
+            $partyName = null;
+            if (!empty($partyId)) {
+                $party = AccountMaster::find($partyId);
+                $partyName = $party?->accountName;
+            }
 
             try {
-                $inwardData = null;
-
-                DB::transaction(function() use ($request, &$invoiceHeaderData, &$inwardData, $rows, $isKachi, $shop) {
-                    if ($isKachi) {
-                        // Safety & Concurrency check for Kachi Entry sequence numbers
-                        $clientSeq = trim($invoiceHeaderData['inward_voucher_no'] ?? '');
-
-                        $existing = null;
-                        if (!empty($clientSeq)) {
-                            $existing = InwardInvoice::where('shop_id', $shop->id)
-                                ->where('is_kachi', 1)
-                                ->where('inward_voucher_no', $clientSeq)
-                                ->lockForUpdate()
-                                ->first();
-                        }
-
-                        if ($existing || empty($clientSeq)) {
-                            $lastKachi = InwardInvoice::where('shop_id', $shop->id)
-                                ->where('is_kachi', 1)
-                                ->orderBy('id', 'desc')
-                                ->lockForUpdate()
-                                ->first();
-
-                            $nextNum = 1;
-                            if ($lastKachi && !empty($lastKachi->inward_voucher_no)) {
-                                $numericVal = (int) preg_replace('/\D/', '', $lastKachi->inward_voucher_no);
-                                if ($numericVal > 0) {
-                                    $nextNum = $numericVal + 1;
-                                }
-                            }
-                            $seq = sprintf('%06d', $nextNum);
-                            $invoiceHeaderData['inward_voucher_no'] = $seq;
-                            $invoiceHeaderData['inward_challan_no'] = $seq;
-                        } else {
-                            // Ensure 6-digit zero padding format
-                            $numericVal = (int) preg_replace('/\D/', '', $clientSeq);
-                            if ($numericVal > 0) {
-                                $seq = sprintf('%06d', $numericVal);
-                                $invoiceHeaderData['inward_voucher_no'] = $seq;
-                                $invoiceHeaderData['inward_challan_no'] = $seq;
-                            }
-                        }
-                    }
-
-                    // Inward Invoice Save
-                    $inwardData = InwardInvoiceRepository::storeByInwardInvoiceRequest($invoiceHeaderData);
-
+                DB::transaction(function() use ($rows, $inwardData, $partyId, $partyName) {
                     foreach ($rows as $row) {
                         // Inward Product save
                         InwardProductRepository::storeByInwardProductRequest($row, $inwardData->id);
 
-                        // Design Master update (only for normal inward entries, skip for Kachi entries)
-                        if (!$isKachi) {
-                            DesignMasterRepository::designMasterByInwardProductupdate($row, $row['designid']);
-                        }
+                        // Design Master update
+                        DesignMasterRepository::designMasterByInwardProductupdate(
+                            $row,
+                            $row['designid'] ?? null,
+                            $partyId,
+                            $partyName
+                        );
                     }
                 });
 
-                $msg = $isKachi ? __('Kachi Entry created successfully!') : __('Inward Product created successfully!');
-
                 return response()->json([
                     'status' => true,
-                    'message' => $msg,
+                    'message' => __('Inward Product created successfully!'),
                 ]);
             } catch (\Exception $e) {
 //dd($e->getMessage());
@@ -294,46 +261,28 @@ class InwardProductController extends Controller
     public function inwardProduct(Request $request)
     {
         $search = $request->search;
-        $isKachi = $request->is_kachi;
 
         $shop = generaleSetting('shop');
         $rootShop = generaleSetting('rootShop');
 
-        $inwardLists = InwardInvoice::select('id','shop_id','counter_master_id','inward_voucher_no','inward_date','inward_challan_no','inward_challan_date','inward_party_code','inward_acc_gst_amount','inward_acc_net_amount','inward_acc_amt_with_gst','is_kachi')
-            ->with(['counter:id,code,counter_name','partyCode:id,accountName,accountshortcode,cont_info_mobile1,tax_info_gst_no','inwardProduct','inwardProduct.products:id,name','inwardProduct.designMaster:id,design_number','inwardProduct.vatTax:id,name,percentage','inwardProduct.hsnMaster:id,hsn_code'])
-            ->when($search, function ($query) use ($search) {
-                return $query->where(function($q) use ($search) {
-                    $q->where('inward_voucher_no', 'like', "%$search%")
-                        ->orWhere('inward_challan_no', 'like', "%$search%")
-                        ->orWhereHas('partyCode', function($partyQuery) use ($search) {
-                            $partyQuery->where('accountName', 'like', "%$search%");
-                        });
-                });
-            })
-            ->when($isKachi !== null && $isKachi !== '', function($query) use ($isKachi) {
-                if ($isKachi == 1 || $isKachi === '1' || $isKachi === true || $isKachi === 'true') {
-                    return $query->where('is_kachi', 1);
-                } else {
-                    return $query->where(function($q) {
-                        $q->where('is_kachi', 0)->orWhereNull('is_kachi');
-                    });
-                }
-            }, function($query) {
-                // Default: show ONLY normal/final inward entries
-                return $query->where(function($q) {
-                    $q->where('is_kachi', 0)->orWhereNull('is_kachi');
-                });
-            })
-            ->where('shop_id',$shop->id)
-            ->orderByDesc('id')
-            ->paginate(20)
-            ->withQueryString();
 
+//        $inwardLists = InwardProduct::with(['products:id,name','designMaster:id,design_number'])->when($search, function ($query) use ($search) {
+//            return $query->where('name', 'like', "%$search%");
+//        })->where('shop_id',$shop->id)->orderByDesc('id')->paginate(20)->withQueryString();
+
+        $inwardLists = InwardInvoice::select('id','shop_id','counter_master_id','inward_voucher_no','inward_date','inward_challan_no','inward_challan_date','inward_party_code','inward_acc_gst_amount','inward_acc_net_amount','inward_acc_amt_with_gst')->with(['counter:id,code,counter_name','partyCode:id,accountName,accountshortcode,cont_info_mobile1,tax_info_gst_no','inwardProduct','inwardProduct.products:id,name','inwardProduct.designMaster:id,design_number','inwardProduct.vatTax:id,name,percentage','inwardProduct.hsnMaster:id,hsn_code'])->when($search, function ($query) use ($search) {
+            return $query->where(function($q) use ($search) {
+                $q->where('inward_voucher_no', 'like', "%$search%")
+                    ->orWhere('inward_challan_no', 'like', "%$search%")
+                    ->orWhereHas('partyCode', function($partyQuery) use ($search) {
+                        $partyQuery->where('accountName', 'like', "%$search%");
+                    });
+            });
+        })->where('shop_id',$shop->id)->orderByDesc('id')->paginate(20)->withQueryString();
+//dd($inwardLists);
         if ($request->ajax()) {
             return view('shop.inward-product.partials.inward-list', compact('inwardLists'))->render();
         }
-
-        return view('shop.inward-product.partials.inward-list', compact('inwardLists'));
     }
 
     public function edit($id)
@@ -341,7 +290,25 @@ class InwardProductController extends Controller
         $shop = generaleSetting('shop');
         $rootShop = generaleSetting('rootShop');
 
-        $inwardData = InwardInvoice::with(['counter:id,code,counter_name','vattax:id,name,percentage','partyCode:id,accountName,accountshortcode,other_info_act_limit','inwardProduct','purchaser:id,name,last_name','season:id,name','agent:id,code,name','transport:id,code,name','deliveryBy:id,name','inwardProduct.products:id,name','inwardProduct.colors','inwardProduct.sizes','inwardProduct.designMaster:id,design_number','inwardProduct.hsnMaster:id,hsn_code','inwardProduct.vatTax:id,percentage'])->where('id',$id)->where('shop_id',$shop->id)->first();
+        $inwardData = InwardInvoice::with([
+            'counter:id,code,counter_name',
+            'vattax:id,name,percentage',
+            'partyCode:id,accountName,accountshortcode,other_info_act_limit,state_id',
+            'inwardProduct' => function ($q) {
+                $q->where('is_purchase_only', false);
+            },
+            'purchaser:id,name,last_name',
+            'season:id,name',
+            'agent:id,code,name',
+            'transport:id,code,name',
+            'deliveryBy:id,name',
+            'inwardProduct.products:id,name',
+            'inwardProduct.colors',
+            'inwardProduct.sizes',
+            'inwardProduct.designMaster:id,design_number',
+            'inwardProduct.hsnMaster:id,hsn_code',
+            'inwardProduct.vatTax:id,percentage'
+        ])->where('id',$id)->where('shop_id',$shop->id)->first();
 
 //        $inwardData->load([
 //            'products:id,name',
@@ -364,8 +331,15 @@ class InwardProductController extends Controller
                     'message' => __('already purchased cannot edited'),
                 ]);
             }
+            $partyId = $invoiceData['inward_party_code'] ?? $inwardProduct->inward_party_code;
+            $partyName = null;
+            if (!empty($partyId)) {
+                $party = AccountMaster::find($partyId);
+                $partyName = $party?->accountName;
+            }
+
             try {
-                DB::transaction(function () use ($rows, $invoiceData, $inwardProduct) {
+                DB::transaction(function () use ($rows, $invoiceData, $inwardProduct, $partyId, $partyName) {
 
                     /** -------------------------
                      * 1️⃣ UPDATE INVOICE HEADER
@@ -410,7 +384,9 @@ class InwardProductController extends Controller
                         // Design Master Update
                         DesignMasterRepository::designMasterByInwardProductupdate(
                             $row,
-                            $row['designid']
+                            $row['designid'] ?? null,
+                            $partyId,
+                            $partyName
                         );
                     }
                     //
@@ -479,7 +455,8 @@ class InwardProductController extends Controller
             $inwardBarcodeData = InwardInvoice::with([
                 'vattax:id,name,percentage',
                 'inwardProduct' => function ($query) {
-                    $query->withCount('barcodes')
+                    $query->where('is_purchase_only', false)
+                    ->withCount('barcodes')
                     ->with([
                         'products:id,name',
                         'colors',
@@ -537,16 +514,25 @@ class InwardProductController extends Controller
 
             DB::beginTransaction();
             try {
-                $lastBarcode = ProductBarcode::orderBy('id', 'desc')
+                $prefix = date('y') . date('m');
+
+                $lastBarcode = ProductBarcode::where('barcode_number', 'like', $prefix . '%')
+                    ->orderBy('barcode_number', 'desc')
                     ->value('barcode_number');
 
-                $startNumber = $lastBarcode ? (int)$lastBarcode + 1 : 1;
+                $currentSeq = 1;
+                if ($lastBarcode && strlen($lastBarcode) >= 11) {
+                    $seq = (int)substr($lastBarcode, 4);
+                    if ($seq > 0) {
+                        $currentSeq = $seq + 1;
+                    }
+                }
 
                 $insertData = [];
                 $chunkSize = 1000;
 
                 for ($i = 0; $i < $generateQty; $i++) {
-                    $barcodeNumber = str_pad($startNumber + $i, 10, '0', STR_PAD_LEFT);
+                    $barcodeNumber = $prefix . str_pad($currentSeq + $i, 7, '0', STR_PAD_LEFT);
 
                     $insertData[] = [
                         'shop_id' => $shop->id,
@@ -741,5 +727,193 @@ class InwardProductController extends Controller
         }
     }
 
+    /**
+     * Generate barcodes for all items in an inward invoice in a single click
+     */
+    public function generateAllBarcodes(Request $request, $inwardInvoiceId)
+    {
+        $shop = generaleSetting('shop');
+        if (empty($inwardInvoiceId) || $inwardInvoiceId == 0) {
+            return response()->json(['error' => 'Invalid invoice ID'], 400);
+        }
+
+        $inwardInvoice = InwardInvoice::with([
+            'inwardProduct' => function ($query) {
+                $query->withCount('barcodes')->with('products:id,name');
+            }
+        ])
+            ->where('id', $inwardInvoiceId)
+            ->where('shop_id', $shop->id)
+            ->first();
+
+        if (!$inwardInvoice) {
+            return response()->json(['error' => 'Inward invoice not found'], 404);
+        }
+
+        $selectedInwardProductIds = $request->input('inward_product_ids');
+        if (!empty($selectedInwardProductIds)) {
+            if (is_string($selectedInwardProductIds)) {
+                $selectedInwardProductIds = explode(',', $selectedInwardProductIds);
+            }
+            $selectedInwardProductIds = array_filter(array_map('trim', (array)$selectedInwardProductIds));
+        }
+
+        DB::beginTransaction();
+        try {
+            $prefix = date('y') . date('m');
+
+            $lastBarcode = ProductBarcode::where('barcode_number', 'like', $prefix . '%')
+                ->orderBy('barcode_number', 'desc')
+                ->value('barcode_number');
+
+            $currentSeq = 1;
+            if ($lastBarcode && strlen($lastBarcode) >= 11) {
+                $seq = (int)substr($lastBarcode, 4);
+                if ($seq > 0) {
+                    $currentSeq = $seq + 1;
+                }
+            }
+
+            $totalGenerated = 0;
+            $insertData = [];
+            $chunkSize = 500;
+
+            foreach ($inwardInvoice->inwardProduct()->where('is_purchase_only', false)->get() as $item) {
+                if (!empty($selectedInwardProductIds) && !in_array($item->id, $selectedInwardProductIds)) {
+                    continue;
+                }
+
+                $existingCount = $item->barcodes_count ?? ProductBarcode::where('inward_product_id', $item->id)->count();
+                $needed = $item->quantity - $existingCount;
+
+                if ($needed <= 0) {
+                    continue;
+                }
+
+                for ($i = 0; $i < $needed; $i++) {
+                    $barcodeNumber = $prefix . str_pad($currentSeq, 7, '0', STR_PAD_LEFT);
+                    $currentSeq++;
+
+                    $insertData[] = [
+                        'shop_id' => $shop->id,
+                        'inward_invoice_id' => $inwardInvoice->id,
+                        'product_id' => $item->product_id,
+                        'inward_product_id' => $item->id,
+                        'barcode_number' => $barcodeNumber,
+                        'mrp' => $item->mrp,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+
+                    $totalGenerated++;
+
+                    if (count($insertData) >= $chunkSize) {
+                        ProductBarcode::insert($insertData);
+                        $insertData = [];
+                    }
+                }
+
+                // Increment product quantity for online shop stock
+                if ($item->product_id) {
+                    Product::where('id', $item->product_id)->increment('quantity', $needed);
+                }
+            }
+
+            if (!empty($insertData)) {
+                ProductBarcode::insert($insertData);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => $totalGenerated > 0 
+                    ? "Successfully generated {$totalGenerated} barcodes in Bill #{$inwardInvoice->inward_voucher_no}!"
+                    : "All items in this bill already have barcodes generated.",
+                'total_generated' => $totalGenerated,
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to generate all barcodes: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Print all or selected barcodes for an inward invoice in a single sheet (2-up side-by-side)
+     */
+    public function printMultipleInwardBarcodes(Request $request, $inwardInvoiceId)
+    {
+        $shop = generaleSetting('shop');
+        if (empty($inwardInvoiceId) || $inwardInvoiceId == 0) {
+            return back()->withError(__('Invalid invoice ID'));
+        }
+
+        $inwardInvoice = InwardInvoice::where('id', $inwardInvoiceId)
+            ->where('shop_id', $shop->id)
+            ->first();
+
+        if (!$inwardInvoice) {
+            return back()->withError(__('Inward invoice not found'));
+        }
+
+        $selectedInwardProductIds = $request->input('inward_product_ids');
+        if (!empty($selectedInwardProductIds)) {
+            if (is_string($selectedInwardProductIds)) {
+                $selectedInwardProductIds = explode(',', $selectedInwardProductIds);
+            }
+            $selectedInwardProductIds = array_filter(array_map('trim', (array)$selectedInwardProductIds));
+        }
+
+        $query = ProductBarcode::with([
+            'inwardInvoice.partyCode:id,accountName',
+            'inwardProduct.products:id,name',
+            'inwardProduct.colors',
+            'inwardProduct.sizes',
+            'inwardProduct.designMaster:id,design_number',
+        ])
+            ->where('inward_invoice_id', $inwardInvoiceId)
+            ->where('is_sold', 0);
+
+        if (!empty($selectedInwardProductIds)) {
+            $query->whereIn('inward_product_id', $selectedInwardProductIds);
+        }
+
+        $query->orderBy('inward_product_id', 'asc')->orderBy('id', 'asc');
+
+        $barcode = new DNS1D();
+        $masterPrices = MasterPrice::pluck('alphabet', 'number')->toArray();
+        $barcodeGenerate = collect();
+
+        $query->chunk(500, function ($items) use ($barcode, &$barcodeGenerate, $masterPrices) {
+            foreach ($items as $item) {
+                $item->barcode_image = $barcode->getBarcodePNG(
+                    $item->barcode_number,
+                    'C128'
+                );
+
+                $buyPrice = $item->inwardProduct->buy_price ?? 0;
+                $roundedPrice = round($buyPrice);
+                $encodedPrice = '';
+                foreach (str_split((string)$roundedPrice) as $digit) {
+                    if (isset($masterPrices[$digit])) {
+                        $encodedPrice .= $masterPrices[$digit];
+                    }
+                }
+
+                $item->encoded_price = $encodedPrice;
+            }
+
+            $barcodeGenerate = $barcodeGenerate->merge($items);
+        });
+
+        if ($barcodeGenerate->isEmpty()) {
+            return back()->withError(__('No barcodes found to print. Please click "Generate All Barcodes" first.'));
+        }
+
+        // Mark as printed
+        ProductBarcode::whereIn('id', $barcodeGenerate->pluck('id'))->update(['is_printed' => 1]);
+
+        return view('shop.barcode.generate_multiple', compact('barcodeGenerate'));
+    }
 
 }

@@ -110,12 +110,14 @@ class ProductController extends Controller
                             ->from('inward_products')
                             ->join('inward_product_colors', 'inward_products.id', '=', 'inward_product_colors.inward_product_id')
                             ->where('inward_product_colors.color_id', $colorID)
+                            ->where('inward_products.is_online_product', 1)
                             ->whereNotNull('product_id');
                     })->orWhereIn('design_master_id', function ($q2) use ($colorID) {
                         $q2->select('design_master_id')
                             ->from('inward_products')
                             ->join('inward_product_colors', 'inward_products.id', '=', 'inward_product_colors.inward_product_id')
                             ->where('inward_product_colors.color_id', $colorID)
+                            ->where('inward_products.is_online_product', 1)
                             ->whereNotNull('design_master_id');
                     });
                 });
@@ -128,12 +130,14 @@ class ProductController extends Controller
                             ->from('inward_products')
                             ->join('inward_product_sizes', 'inward_products.id', '=', 'inward_product_sizes.inward_product_id')
                             ->where('inward_product_sizes.size_id', $sizeID)
+                            ->where('inward_products.is_online_product', 1)
                             ->whereNotNull('product_id');
                     })->orWhereIn('design_master_id', function ($q2) use ($sizeID) {
                         $q2->select('design_master_id')
                             ->from('inward_products')
                             ->join('inward_product_sizes', 'inward_products.id', '=', 'inward_product_sizes.inward_product_id')
                             ->where('inward_product_sizes.size_id', $sizeID)
+                            ->where('inward_products.is_online_product', 1)
                             ->whereNotNull('design_master_id');
                     });
                 });
@@ -503,7 +507,7 @@ class ProductController extends Controller
                         'price' => $firstInward->price,
                         'mrp' => $firstInward->mrp,
                         'buy_price' => $firstInward->buy_price,
-                        'discount_price' => $firstInward->discount_price,
+                        'discount_price' => 0, // Inward vendor discount is not customer discount
                         'quantity' => $firstInward->quantity,
                         'inward_invoice_id' => $firstInward->inward_invoice_id,
                         'inward_product_id' => $firstInward->id,
@@ -515,6 +519,11 @@ class ProductController extends Controller
                 $hasValidSizes = false;
 
                 foreach ($inwardProducts as $inwardProduct) {
+                    // Skip variant if disabled from online & mobile app sales
+                    if (isset($inwardProduct->is_online_product) && (int) $inwardProduct->is_online_product === 0) {
+                        continue;
+                    }
+
                     $colorData = DB::table('inward_product_colors')
                         ->where('inward_product_id', $inwardProduct->id)
                         ->join('colors', 'inward_product_colors.color_id', '=', 'colors.id')
@@ -550,17 +559,27 @@ class ProductController extends Controller
                         // ✅ For simple product, store inward data from this inward product
                         $inwardInvoiceId = $inwardProduct->inward_invoice_id;
                         $inwardProductId = $inwardProduct->id;
+                        $simpleDisc = (float) (($inwardProduct->online_discount_percent !== null && $inwardProduct->online_discount_percent > 0) ? $inwardProduct->online_discount_percent : ($product->online_discount_percent ?? 0));
+                        $simpleDiscPrice = ($simpleDisc > 0) ? round($inwardProduct->mrp - ($inwardProduct->mrp * $simpleDisc / 100), 2) : 0;
                         $inwardData = [
                             'price' => $inwardProduct->price,
                             'mrp' => $inwardProduct->mrp,
                             'buy_price' => $inwardProduct->buy_price,
-                            'discount_price' => $inwardProduct->discount_price,
+                            'discount_price' => $simpleDiscPrice,
                             'quantity' => $inwardProduct->quantity,
                             'inward_invoice_id' => $inwardProduct->inward_invoice_id,
                             'inward_product_id' => $inwardProduct->id,
                         ];
                         continue;
                     }
+
+                    // Compute variant discount % and price
+                    $vDiscountPercent = (float) (($inwardProduct->online_discount_percent !== null && $inwardProduct->online_discount_percent > 0)
+                        ? $inwardProduct->online_discount_percent
+                        : ($product->online_discount_percent ?? 0));
+                    $vDiscountPrice = ($vDiscountPercent > 0)
+                        ? round($inwardProduct->mrp - ($inwardProduct->mrp * $vDiscountPercent / 100), 2)
+                        : (float) $inwardProduct->mrp;
 
                     // ✅ If ONLY valid sizes exist (no colors)
                     if (!$hasValidColors && $hasValidSizes) {
@@ -569,8 +588,9 @@ class ProductController extends Controller
                                 'id' => $size->id,
                                 'name' => $size->name,
                                 'mrp' => (float) number_format($inwardProduct->mrp, 2, '.', ''),
+                                'price' => (float) number_format($vDiscountPrice, 2, '.', ''),
                                 'purc_rate' => (float) number_format($inwardProduct->buy_price, 2, '.', ''),
-                                'discount_percent' => (float) $inwardProduct->discount_price,
+                                'discount_percent' => $vDiscountPercent,
                                 'qty' => $inwardProduct->quantity,
                                 'inward_invoice_id' => $inwardProduct->inward_invoice_id,
                                 'inward_product_id' => $inwardProduct->id,
@@ -594,8 +614,9 @@ class ProductController extends Controller
                                 'sizes' => [],
                                 'size_details' => [],
                                 'mrp' => $inwardProduct->mrp,
+                                'price' => (float) number_format($vDiscountPrice, 2, '.', ''),
                                 'purc_rate' => $inwardProduct->buy_price,
-                                'discount_percent' => $inwardProduct->discount_price,
+                                'discount_percent' => $vDiscountPercent,
                                 'qty' => 0,
                                 'inward_invoice_id' => $inwardProduct->inward_invoice_id,
                                 'inward_product_id' => $inwardProduct->id,
@@ -617,17 +638,13 @@ class ProductController extends Controller
                             }
 
                             if (!$sizeExists) {
-//                                $groupedByColor[$colorKey]['size_details'][] = [
-//                                    'id' => $size->id,
-//                                    'name' => $size->name,
-//                                ];
-
                                 $groupedByColor[$colorKey]['size_details'][] = [
                                     'id' => $size->id,
                                     'name' => $size->name,
                                     'mrp' => (float) number_format($inwardProduct->mrp, 2, '.', ''),
+                                    'price' => (float) number_format($vDiscountPrice, 2, '.', ''),
                                     'purc_rate' => (float) number_format($inwardProduct->buy_price, 2, '.', ''),
-                                    'discount_percent' => (float) $inwardProduct->discount_price,
+                                    'discount_percent' => $vDiscountPercent,
                                     'qty' => (int) $inwardProduct->quantity,
                                     'inward_invoice_id' => $inwardProduct->inward_invoice_id,
                                     'inward_product_id' => $inwardProduct->id,

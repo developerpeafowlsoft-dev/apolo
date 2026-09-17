@@ -1,0 +1,489 @@
+.docs-heading {
+  font-size: 2.3rem !important;
+  margin-bottom: 2rem;
+  position: relative
+}
+.code-snippet {
+  margin-top: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  margin-bottom: 1.5rem;
+  /* Added spacing between the text and code snippet */
+  position: relative;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f1f1f1;
+  padding: 0.15rem 0.5rem;
+  /* Reduced padding for smaller top bar */
+  border-bottom: 1px solid #ddd;
+  border-radius: 4px 4px 0 0;
+  font-size: 0.875rem;
+  /* Reduced font size for smaller top bar */
+}
+
+.code-lang {
+  font-weight: bold;
+}
+
+.copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  color: #007bff;
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  /* Smaller text size */
+}
+
+.icon-sm {
+  margin-right: 0.25rem;
+  width: 18px;
+  /* Reduced size for the SVG icon */
+  height: 18px;
+}
+
+pre {
+  margin: 1rem;
+  font-size: 0.9rem;
+  /* Added spacing inside code section */
+}
+
+/* #162238 */
+.videoBox iframe {
+  margin: 10px 0;
+  border-radius: 15px;
+  border: 1px solid #dd2c5c44;
+  box-shadow: rgba(134, 63, 201, 0.253) 0px 3px 8px;
+}
+
+.alert-head {
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 0.825rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.alert-error,
+.alert-information,
+.alert-warning,
+.alert-info,
+.alert-success {
+  border: none;
+  border-left: 5px solid;
+  border-radius: 15px;
+}
+
+.alert-success {
+  color: #003100;
+  border-color: #0c991f;
+  background: rgba(8, 192, 63, 0.123);
+  box-shadow: rgba(164, 252, 198, 0.13) 0px 3px 8px;
+}
+
+.alert-warning {
+  border-color: #F7C623;
+  color: #000000;
+  background: #ffa90a2d;
+}
+.alert-info {
+  border-color: #dd2c5c;
+  color: #000000;
+  background: #1db8fb25;
+}
+.alert-information {
+  color: #003100;
+  border-color: #00ADDA;
+  background: #8adff54d;
+}
+
+.alert-error {
+  color: #240101;
+  border-color: #F44336;
+  background: #ef9a9a56;
+}
+
+.localhostCommand li {
+  padding-top: 0rem;
+  padding-bottom: 0rem;
+}
+
+.imageBox-shadow {
+  border-radius: 15px;
+  border: 1px solid #dd2c5b7a;
+  box-shadow: rgb(221 44 92 / 43%) 0px 4px 6px;
+}
+
+.site-logo img {
+  width: 175px !important;
+  height: auto;
+  object-fit: cover !important;
+}
+
+.codeBox {
+  background-color: #181c20;
+  box-shadow: rgba(17, 17, 26, 0.05) 0px 1px 0px, rgba(17, 17, 26, 0.1) 0px 0px 8px;
+  color: #e2e3e6;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 14px 0;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.codeText {
+  background-color: #222525;
+  color: #16bb01;
+  padding: 4px 8px;
+  border: 1px solid #16bb01;
+  border-radius: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.urlText {
+  background-color: #fff;
+  color: #0836f1;
+  padding: 4px 8px;
+  border: 1px solid #0836f1;
+  border-radius: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.appStore-image {
+  margin: 15px 0;
+  width: 70%;
+  height: auto;
+  object-fit: cover !important;
+}
+.flutter-image {
+  margin: 15px 0;
+  width: 70%;
+  height: auto;
+  object-fit: cover !important;
+}
+.heightLight{
+  color: #dd2c5c;
+  font-weight: bold;
+}
+
+.linkHlight{
+  text-decoration: none;
+  color: #dd2c5c;
+  font-weight: 600;
+}
+
+.versionBox {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  --color-bg: #f3f3f3;
+  --color-text: #303030;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.versionCard,
+.versionCard *,
+.versionCard *::before,
+.versionCard *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.versionCard {
+  --versionCard-color-bg: var(--color-bg);
+  list-style-type: none;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  max-width: 45em;
+  padding: 2em;
+  gap: 2em;
+  counter-reset: versionCard-counter;
+}
+
+.versionCard li {
+  display: grid;
+  grid-template-areas:
+      "step title"
+      "step content";
+  padding: 1em 2em 1em 0;
+  row-gap: 0.5em;
+  column-gap: 2em;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+  counter-increment: versionCard-counter;
+  text-align: left;
+  background-color: var(--versionCard-color-bg);
+  border-radius: 10px;
+  height: 100%;
+  cursor: pointer;
+  border: 0.2px dashed var(--versionCard-color-accent);
+  /* border: 0.2px solid var(--versionCard-color-accent); */
+}
+
+.versionCard.alternate li:nth-child(even) {
+  grid-template-areas:
+      "title step"
+      "content step";
+  padding: 1em 0 1em 2em;
+}
+
+.versionCard li .step {
+  grid-area: step;
+  display: flex;
+  align-self: flex-start;
+  background-color: var(--versionCard-color-accent);
+  border-radius: 0 50em 50em 0;
+  padding: 1em;
+  justify-content: flex-end;
+  box-shadow: inset 0.25em 0.25em 0.5em rgba(0, 0, 0, 0.4),
+      0em 0.05em rgba(255, 255, 255, 1);
+  flex: 1;
+  gap: 1em;
+}
+
+.versionCard.alternate li:nth-child(even) .step {
+  border-radius: 50em 0 0 50em;
+  flex-direction: row-reverse;
+}
+
+.versionCard li .step i {
+  color: var(--versionCard-color-accent);
+  width: 2em;
+  height: 2em;
+  font-size: 1.8em;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background-color: var(--versionCard-color-bg);
+  box-shadow: 0.25em 0.25em 0.5em rgba(0, 0, 0, 0.4),
+      inset 0.05em 0.05em rgba(255, 255, 255, 1);
+}
+
+.versionCard li .vTitle {
+  grid-area: title;
+  font-size: 18px;
+  color: var(--versionCard-color-accent);
+  font-weight: bold;
+}
+
+.versionCard li .content {
+  grid-area: content;
+  font-size: 0.9em;
+}
+@media only screen and (max-width: 800px) {
+  .appStore-image {
+    width: 100%;
+  }
+  .flutter-image {
+    width: 100%;
+  }
+}
+
+@media only screen and (max-width: 500px) {
+  .versionCard {
+      padding: 1em;
+  }
+
+  .versionCard li {
+      column-gap: 0em;
+      grid-template-areas:
+          'step title'
+          'content content';
+      grid-template-columns: min-content auto;
+      padding: 1em 0em;
+  }
+
+  .versionCard.alternate li:nth-child(even) {
+      column-gap: 0em;
+      grid-template-areas:
+          'title step'
+          'content content';
+      grid-template-columns: auto min-content;
+      padding: 1em 0em;
+  }
+
+  .versionCard li .vTitle {
+      padding: 0 1em;
+      align-self: center;
+      width: auto;
+
+  }
+
+  .versionCard li .step {
+      font-size: .5em;
+  }
+
+  .versionCard li .content {
+      padding: 0 1em;
+  }
+}
+
+.serverCard {
+  margin-top: 20px;
+  position: relative;
+  background-color: #1e1e1e;
+  border-radius: 15px;
+  padding: 20px;
+  text-align: center;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.serverCard:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+}
+.serverCard.DigitalOcean {
+  border-color: #0081FF;
+  background-color: #004080;
+}
+.serverCard.Hostinger {
+  border-color: #673DE6;
+  background-color: #220180;
+}
+.serverCard.Namecheap {
+  border-color: #E94B1B;
+  background: #b62a00;
+}
+.serverCard.GoDaddy {
+  border-color: #1BDBDB;
+  background: #008b8b;
+}
+.serverCard.GoogleCloud{
+  border-color: #30A952;
+  background: #005819;
+}
+.serverCard.InMotion {
+  border-color: #0F0F0F;
+  background: #111010;
+}
+
+.serverCard .top-shape {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 100px;
+  background-color: rgba(255, 255, 255, 0.1);
+  clip-path: circle(50% at 0 0);
+}
+.serverCard .bottom-shape {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background-color: rgba(255, 255, 255, 0.1);
+  clip-path: circle(50% at 100% 100%);
+}
+.icon-container {
+  height: 80px;
+  width: 80px;
+  margin: 15px auto;
+  background: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-container i {
+  font-size: 32px;
+  color: #fff;
+}
+.serverCard h3 {
+  margin: 15px 0;
+  font-size: 1.5rem;
+  color: #fff;
+}
+.serverCard p {
+  font-size: 1rem;
+  color: #ffffff;
+}
+.serverCard .readMore {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 14px;
+  text-decoration: none;
+  transition: 0.3s ease-in-out;
+}
+.serverCard .DigitalOcean-btn {
+  background-color: #0081FF;
+  color: #fff;
+  border: 1px solid #0081FF;
+  box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+}
+.serverCard .DigitalOcean-btn:hover {
+  background-color: #004080;
+  color: #fff;
+}
+
+.serverCard .Hostinger-btn {
+  background-color: #673DE6;
+  color: #fff;
+  border: 1px solid #673DE6;
+  box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+}
+.serverCard .Hostinger-btn:hover {
+  background-color:#220180;
+  color: #fff;
+}
+
+.serverCard .Namecheap-btn {
+  background-color: #FC5905;
+  color: #fff;
+  border: 1px solid #FC5905;
+  box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+}
+.serverCard .Namecheap-btn:hover {
+  background-color: #B62A00;
+  color: #fff;
+}
+
+.serverCard .GoDaddy-btn {
+  background-color: #1FCFCF;
+  color: #fff;
+  border: 1px solid #1FCFCF;
+  box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+}
+.serverCard .GoDaddy-btn:hover {
+  background-color: #008B8B;
+  color: #fff;
+}
+
+.serverCard .GoogleCloud-btn {
+  background-color: #30A952;
+  color: #fff;
+  border: 1px solid #30A952;
+  box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+}
+.serverCard .GoogleCloud-btn:hover {
+  background-color: #005819;
+  color: #fff;
+}
+
+.serverCard .InMotion-btn {
+  background-color: #414141;
+  color: #fff;
+  border: 1px solid #7c7c7c;
+  box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+}
+.serverCard .InMotion-btn:hover {
+  background-color: #000;
+  color: #fff;
+}

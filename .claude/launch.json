@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "opening-stock-preview",
+      "runtimeExecutable": "/Applications/MAMP/bin/php/php8.2.4/bin/php",
+      "runtimeArgs": ["-S", "127.0.0.1:8137", "-t", "/private/tmp/claude-501/-Users-ankit-Data-peafowlweb-Client-2026-Apolo/f999b7e1-de56-4927-8add-c550626c485e/scratchpad"],
+      "port": 8137
+    }
+  ]
+}

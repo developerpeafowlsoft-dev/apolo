@@ -48,7 +48,41 @@ class HsnMaster extends Model
     }
 
 
-// ✅ Add this method to get tax for a specific price
+    public function getTaxForPurchaseRateAndDate($purchaseRate, $date = null)
+    {
+        $purchaseRate = floatval($purchaseRate);
+        $checkDate = $date ? date('Y-m-d', strtotime($date)) : date('Y-m-d');
+
+        $matchingSub = $this->subHsn->filter(function($sub) use ($purchaseRate, $checkDate) {
+            $fromDate = $sub->from_date ? date('Y-m-d', strtotime($sub->from_date)) : null;
+            $toDate = $sub->to_date ? date('Y-m-d', strtotime($sub->to_date)) : null;
+
+            if ($fromDate && $checkDate < $fromDate) return false;
+            if ($toDate && $checkDate > $toDate) return false;
+
+            $fromRate = floatval($sub->from_purchase_rate ?? 0);
+            $toRate = floatval($sub->to_purchase_rate ?? 0);
+
+            if ($toRate == 0) {
+                return $purchaseRate >= $fromRate;
+            }
+            return $purchaseRate >= $fromRate && $purchaseRate <= $toRate;
+        })->first();
+
+        if ($matchingSub && $matchingSub->vat_tax_id) {
+            $vatTax = $matchingSub->vattax ?? \App\Models\VatTax::find($matchingSub->vat_tax_id);
+            return [
+                'vat_tax_id' => $matchingSub->vat_tax_id,
+                'percentage' => floatval($vatTax?->percentage ?? 0),
+            ];
+        }
+
+        return [
+            'vat_tax_id' => $this->vat_tax_id,
+            'percentage' => floatval($this->vattax?->percentage ?? 0),
+        ];
+    }
+
     public function getTaxForPrice($price)
     {
         // Find sub HSN for price range

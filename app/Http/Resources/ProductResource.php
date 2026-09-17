@@ -46,10 +46,9 @@ class ProductResource extends JsonResource
         |--------------------------------------------------------------------------
         */
 
-        $discountPercentage = $this->getDiscountPercentage(
-            $this->price,
-            $this->discount_price
-        );
+        $discountPercentage = ((float)($this->online_discount_percent ?? 0) > 0)
+            ? (float) $this->online_discount_percent
+            : $this->getDiscountPercentage($this->price, $this->discount_price);
 
         $totalSold = $this->orders->sum('pivot.quantity');
 
@@ -130,13 +129,9 @@ class ProductResource extends JsonResource
         |--------------------------------------------------------------------------
         | First variant price calculation
         |--------------------------------------------------------------------------
-        | inward_products.mrp = Original MRP
-        | inward_products.discount_price = Discount percentage
-        |
-        | Example:
-        | MRP = 699
-        | Discount = 10
-        | Selling price = 629.10
+        | inward_products.mrp = MRP (retail customer price)
+        | Inward discount (inward_products.discount_price) is vendor purchase discount,
+        | NOT retail customer discount. Customer selling price defaults to MRP.
         */
 
         $firstVariantOriginalPrice = null;
@@ -144,40 +139,27 @@ class ProductResource extends JsonResource
         $firstVariantDiscount = 0;
 
         if ($firstInwardProduct) {
-            // inward_products.price = original price before discount
+            // MRP is the customer retail price
             $firstVariantOriginalPrice = (float) (
-                $firstInwardProduct->price ?? 0
+                $firstInwardProduct->mrp ?? $firstInwardProduct->price ?? 0
             );
 
-            // inward_products.mrp = final selling price after discount
-            $firstVariantSellingPrice = (float) (
-                $firstInwardProduct->mrp ?? 0
-            );
+            // Default selling price is MRP (no vendor discount given to retail customers)
+            $firstVariantSellingPrice = $firstVariantOriginalPrice;
+            $firstVariantDiscount = 0;
 
-            // inward_products.discount_price = discount percentage
-            $firstVariantDiscount = (float) (
-                $firstInwardProduct->discount_price ?? 0
-            );
-
-            // Fallback if final selling price is not stored
-            if ($firstVariantSellingPrice <= 0) {
-                if (
-                    $firstVariantDiscount > 0 &&
-                    $firstVariantDiscount < 100 &&
-                    $firstVariantOriginalPrice > 0
-                ) {
-                    $firstVariantSellingPrice = round(
-                        $firstVariantOriginalPrice
-                        - ($firstVariantOriginalPrice * $firstVariantDiscount / 100),
-                        2
-                    );
-                } else {
-                    $firstVariantSellingPrice = $firstVariantOriginalPrice;
-                }
+            // Only apply retail discount if product has a genuine promotional discount
+            if ($discountPercentage > 0) {
+                $firstVariantDiscount = (float) $discountPercentage;
+                $firstVariantSellingPrice = round(
+                    $firstVariantOriginalPrice - ($firstVariantOriginalPrice * $firstVariantDiscount / 100),
+                    2
+                );
             }
 
             if ($firstVariantOriginalPrice <= 0) {
-                $firstVariantOriginalPrice = $firstVariantSellingPrice;
+                $firstVariantOriginalPrice = (float) ($firstInwardProduct->price ?? $this->price ?? 0);
+                $firstVariantSellingPrice = $firstVariantOriginalPrice;
             }
         }
 

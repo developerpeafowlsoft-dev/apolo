@@ -85,6 +85,7 @@ class SystemRolesAndPermissionsSeeder extends Seeder
         $inventoryRole = Role::firstOrCreate(['name' => 'inventory_manager', 'guard_name' => 'web', 'is_shop' => true]);
         $inventoryPerms = array_filter($allPermissionNames, function ($name) {
             return str_contains($name, 'inwardProduct.')
+                || str_contains($name, 'openingStock.')
                 || str_contains($name, 'purchaseProduct.')
                 || str_contains($name, 'product.')
                 || str_contains($name, 'itemMaster.')

@@ -19,7 +19,7 @@ class PaymentGatewaySeeder extends Seeder
                 'name' => 'stripe',
                 'config' => json_encode([
                     'secret_key' => env('STRIPE_SECRET'),
-                    'published_key' => env('STRIPE_PUBLIC_SECRET'),
+                    'published_key' => env('STRIPE_PUBLISHED_KEY'),
                 ]),
                 'mode' => 'test',
                 'alias' => 'Stripe',
@@ -29,8 +29,8 @@ class PaymentGatewaySeeder extends Seeder
                 'title' => 'PayPal',
                 'name' => 'paypal',
                 'config' => json_encode([
-                    'client_id' => 'ASw2Ol4zJrd7UOYWz7Vjwv2ZBEZ9AXuF4aCbSXLXImOp8HaCFwGHCggJ1QBuzSoouGJ6vMncd9pMAtV9',
-                    'client_secret' => 'EA3d_eVh67xx4_vk1FYAsV75faeFvLVf1B6d2Rg9E4BfjXetw63k883MtSoVLi2v8P3bbW3tOJVFEKdt',
+                    'client_id' => env('PAYPAL_CLIENT_ID'),
+                    'client_secret' => env('PAYPAL_CLIENT_SECRET'),
                 ]),
                 'mode' => 'test',
                 'alias' => 'PayPal',
@@ -40,8 +40,8 @@ class PaymentGatewaySeeder extends Seeder
                 'title' => 'Razorpay',
                 'name' => 'razorpay',
                 'config' => json_encode([
-                    'key' => 'rzp_live_C7ayx7PaJJkARf',
-                    'secret' => '4BdgF5N5FitWBRBA6QwZrVwi',
+                    'key' => env('RAZORPAY_KEY'),
+                    'secret' => env('RAZORPAY_SECRET'),
                 ]),
                 'mode' => 'test',
                 'alias' => 'Razorpay',
@@ -51,8 +51,8 @@ class PaymentGatewaySeeder extends Seeder
                 'title' => 'Paystack',
                 'name' => 'paystack',
                 'config' => json_encode([
-                    'public_key' => 'pk_test_99e718f74dfbffff4a4101680c367d39d5d90c5b',
-                    'secret_key' => 'sk_test_12498c55ac75a902a8ebe908f4e5108790e6e93c',
+                    'public_key' => env('PAYSTACK_PUBLIC_KEY'),
+                    'secret_key' => env('PAYSTACK_SECRET_KEY'),
                     'machant_email' => '',
                 ]),
                 'mode' => 'test',
@@ -63,8 +63,8 @@ class PaymentGatewaySeeder extends Seeder
                 'title' => 'aamarPay',
                 'name' => 'aamarpay',
                 'config' => json_encode([
-                    'store_id' => 'aamarpaytest',
-                    'signature_key' => 'dbb74894e82415a2f7ff0ec3a97e4183',
+                    'store_id' => env('AAMARPAY_STORE_ID'),
+                    'signature_key' => env('AAMARPAY_SIGNATURE_KEY'),
                 ]),
                 'mode' => 'test',
                 'alias' => 'AamarPay',
@@ -74,10 +74,10 @@ class PaymentGatewaySeeder extends Seeder
                 'title' => 'BKash',
                 'name' => 'bKash',
                 'config' => json_encode([
-                    'username' => 'sandboxTokenizedUser02',
-                    'password' => 'sandboxTokenizedUser02@12345',
-                    'app_key' => '4f6o0cjiki2rfm34kfdadl1eqq',
-                    'app_secret_key' => '2is7hdktrekvrbljjh44ll3d9l1dtjo4pasmjvs5vl5qr3fug4b',
+                    'username' => env('BKASH_USERNAME'),
+                    'password' => env('BKASH_PASSWORD'),
+                    'app_key' => env('BKASH_APP_KEY'),
+                    'app_secret_key' => env('BKASH_APP_SECRET'),
                 ]),
                 'mode' => 'test',
                 'alias' => 'Bkash',
@@ -88,8 +88,8 @@ class PaymentGatewaySeeder extends Seeder
                 'name' => 'paytabs',
                 'config' => json_encode([
                     'base_url' => 'https://secure-global.paytabs.com',
-                    'profile_id' => '142160',
-                    'server_key' => 'S6J9R6JRLB-JJBGTHLGJK-GZWGDGZMJL',
+                    'profile_id' => env('PAYTABS_PROFILE_ID'),
+                    'server_key' => env('PAYTABS_SERVER_KEY'),
                     'currency' => 'USD',
                 ]),
                 'mode' => 'test',
@@ -102,11 +102,11 @@ class PaymentGatewaySeeder extends Seeder
     }
 }
 
-// 'username' => '01568706310',
-// 'password' => 'v5oXk*iP1!.',
-// 'app_key' => 'ye5xaQtmhyRvDM0rjDE1LInftc',
-// 'app_secret_key' => '25mMaTSUzuHSndUPnCUrkKvWmT5SBX7weFeHB3rXiU5niQedAtQ0'
+// 'username' => '',
+// 'password' => '',
+// 'app_key' => '',
+// 'app_secret_key' => ''
 
 // rozorpay live key
-// 'key' => 'rzp_live_vtkweI0Rai8i7f',
-// 'secret' => 't4SN962X1gjHYZbSzltlCvVS',
+// 'key' => '',
+// 'secret' => '',

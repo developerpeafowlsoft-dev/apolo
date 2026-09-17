@@ -92,22 +92,6 @@
         border-color: #3b82f6 !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
     }
-    /* Nested Quick Create Brand/Category/SubCategory/Unit/Material Modal Stacking Overrides */
-    #modalQuickCreateBrand, #modalQuickCreateCategory, #modalQuickCreateSubCategory, #modalQuickCreateUnit, #modalQuickCreateMaterial {
-        z-index: 1080 !important;
-    }
-    #modalQuickCreateBrand .modal-dialog, #modalQuickCreateCategory .modal-dialog, #modalQuickCreateSubCategory .modal-dialog, #modalQuickCreateUnit .modal-dialog, #modalQuickCreateMaterial .modal-dialog {
-        z-index: 1085 !important;
-        position: relative !important;
-    }
-    #modalQuickCreateBrand .modal-content, #modalQuickCreateCategory .modal-content, #modalQuickCreateSubCategory .modal-content, #modalQuickCreateUnit .modal-content, #modalQuickCreateMaterial .modal-content {
-        z-index: 1090 !important;
-        position: relative !important;
-        pointer-events: auto !important;
-    }
-    body.modal-open .modal-backdrop + .modal-backdrop {
-        z-index: 1075 !important;
-    }
     #itme-master-modal .modal-footer {
         background: #f1f5f9 !important;
         border-top: 1px solid #e2e8f0 !important;
@@ -145,9 +129,26 @@
         font-weight: 700;
         text-transform: none;
     }
+    .select2-container--open {
+        z-index: 99999999 !important;
+    }
+    .select2-dropdown {
+        z-index: 99999999 !important;
+    }
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 4px !important;
+        padding: 6px 10px !important;
+        outline: none !important;
+        font-size: 13px !important;
+    }
+    .select2-container--default .select2-search--dropdown .select2-search__field:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+    }
 </style>
 
-<div class="modal fade" tabindex="-1" id="itme-master-modal">
+<div class="modal fade" id="itme-master-modal">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form id="formDataItemMaster" method="POST" enctype="multipart/form-data">
@@ -174,21 +175,12 @@
 
                             <div class="col-md-6 col-lg-4">
                                 <label class="form-label">
-                                    <span>{{ __('Item Short Name') }}</span>
-                                    <kbd class="modal-kbd-hint">Enter ↵</kbd>
-                                </label>
-                                <x-input name="item_short_name" id="item_short_name" type="text" placeholder="Enter Item Short Name" />
-                                <span id="item_short_nameErrorMessage" class="text-danger errorSpan"></span>
-                            </div>
-
-                            <div class="col-md-6 col-lg-4">
-                                <label class="form-label">
-                                    <span>{{ __('Barcode') }} <span class="text-danger">*</span></span>
+                                    <span>{{ __('Item No / ID') }} <span class="text-danger">*</span></span>
                                     <kbd class="modal-kbd-hint">Enter ↵</kbd>
                                 </label>
                                 <div class="input-group flex-nowrap">
-                                    <input type="text" class="form-control disabledCls" name="code" placeholder="Enter Barcode" id="code" value="{{ old('barcode') }}" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8);" required="true" maxlength="8" readonly>
-                                    <button class="btn btn-outline-secondary" type="button" id="generateShortCode" onclick="generateItemMasterCode()" data-toggle="tooltip" data-placement="top" title="Generate Barcode">
+                                    <input type="text" class="form-control" name="code" placeholder="{{ __('Enter Item No / ID') }}" id="code" value="{{ old('code') }}" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 15);" required="true" maxlength="15">
+                                    <button class="btn btn-outline-secondary" type="button" id="generateShortCode" onclick="generateItemMasterCode()" data-toggle="tooltip" data-placement="top" title="{{ __('Generate Item No / ID') }}">
                                         <i class="bi bi-arrow-repeat"></i>
                                     </button>
                                 </div>
@@ -196,48 +188,27 @@
                             </div>
 
                             <div class="col-md-6 col-lg-4">
-                                <label class="form-label d-flex align-items-center justify-content-between mb-1">
-                                    <div>
-                                        <span>{{ __('Select Brand') }} <span class="text-danger">*</span></span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-primary p-0 d-inline-flex align-items-center justify-content-center" id="btnQuickCreateBrand" style="width: 22px; height: 22px; border-radius: 4px;" title="{{ __('Add New Brand (Alt + B / Option + B)') }}">
-                                            <i class="bi bi-plus-lg" style="font-size: 11px;"></i>
-                                        </button>
-                                        <kbd class="modal-kbd-hint">Alt + B</kbd>
-                                    </div>
+                                <label class="form-label">
+                                    <span>{{ __('Select Brand') }} <span class="text-danger">*</span></span>
+                                    <kbd class="modal-kbd-hint">Enter ↵</kbd>
                                 </label>
-                                <x-select name="brand_id" placeholder="Select Brand" required="true"></x-select>
+                                <x-select name="brand_id" required="true"></x-select>
                                 <span id="brand_idErrorMessage" class="text-danger errorSpan"></span>
                             </div>
 
                             <div class="col-md-6 col-lg-4">
-                                <label class="form-label d-flex align-items-center justify-content-between mb-1">
-                                    <div>
-                                        <span>{{ __('Select Category') }} <span class="text-danger">*</span></span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-primary p-0 d-inline-flex align-items-center justify-content-center" id="btnQuickCreateCategory" style="width: 22px; height: 22px; border-radius: 4px;" title="{{ __('Add New Category (Alt + C / Option + C)') }}">
-                                            <i class="bi bi-plus-lg" style="font-size: 11px;"></i>
-                                        </button>
-                                        <kbd class="modal-kbd-hint">Alt + C</kbd>
-                                    </div>
+                                <label class="form-label">
+                                    <span>{{ __('Select Category') }} <span class="text-danger">*</span></span>
+                                    <kbd class="modal-kbd-hint">Enter ↵</kbd>
                                 </label>
-                                <x-select name="category" placeholder="Select Category" required="true"></x-select>
+                                <x-select name="category" required="true"></x-select>
                                 <span id="categoryErrorMessage" class="text-danger errorSpan"></span>
                             </div>
 
-                            <div class="col-md-6 col-lg-4">
-                                <label class="form-label d-flex align-items-center justify-content-between mb-1">
-                                    <div>
-                                        <span>{{ __('Select Sub Categories') }}</span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-primary p-0 d-inline-flex align-items-center justify-content-center" id="btnQuickCreateSubCategory" style="width: 22px; height: 22px; border-radius: 4px;" title="{{ __('Add New Sub Category (Alt + S / Option + S)') }}">
-                                            <i class="bi bi-plus-lg" style="font-size: 11px;"></i>
-                                        </button>
-                                        <kbd class="modal-kbd-hint">Alt + S</kbd>
-                                    </div>
+                            <div class="col-md-6 col-lg-8">
+                                <label class="form-label">
+                                    <span>{{ __('Select Sub Categories') }}</span>
+                                    <kbd class="modal-kbd-hint">Enter ↵</kbd>
                                 </label>
                                 <select name="sub_category[]" id="sub_category" data-placeholder="Select Sub Category" class="form-control select2" multiple style="width: 100%">
                                     <option value="" disabled>{{ __('Select Sub Category') }}</option>
@@ -273,18 +244,11 @@
                             </div>
 
                             <div class="col-md-6 col-lg-4">
-                                <label class="form-label d-flex align-items-center justify-content-between mb-1">
-                                    <div>
-                                        <span>{{ __('Select Unit') }} <span class="text-danger">*</span></span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-primary p-0 d-inline-flex align-items-center justify-content-center" id="btnQuickCreateUnit" style="width: 22px; height: 22px; border-radius: 4px;" title="{{ __('Add New Unit (Alt + U / Option + U)') }}">
-                                            <i class="bi bi-plus-lg" style="font-size: 11px;"></i>
-                                        </button>
-                                        <kbd class="modal-kbd-hint">Alt + U</kbd>
-                                    </div>
+                                <label class="form-label">
+                                    <span>{{ __('Select Unit') }} <span class="text-danger">*</span></span>
+                                    <kbd class="modal-kbd-hint">Enter ↵</kbd>
                                 </label>
-                                <x-select name="unit_id" id="unit_id" placeholder="Select Unit" required="true"></x-select>
+                                <x-select name="unit_id" id="unit_id" required="true"></x-select>
                                 <span id="unit_idErrorMessage" class="text-danger errorSpan"></span>
                             </div>
 
@@ -293,7 +257,7 @@
                                     <span>{{ __('Select HSN Code') }} <span class="text-danger">*</span></span>
                                     <kbd class="modal-kbd-hint">Enter ↵</kbd>
                                 </label>
-                                <x-select name="hsn_master_id" placeholder="Select HSN Code" required="true"></x-select>
+                                <x-select name="hsn_master_id" required="true"></x-select>
                                 <span id="hsn_master_idErrorMessage" class="text-danger errorSpan"></span>
                             </div>
 
@@ -308,18 +272,11 @@
                             </div>
 
                             <div class="col-md-6 col-lg-4">
-                                <label class="form-label d-flex align-items-center justify-content-between mb-1">
-                                    <div>
-                                        <span>{{ __('Select Material') }}</span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-primary p-0 d-inline-flex align-items-center justify-content-center" id="btnQuickCreateMaterial" style="width: 22px; height: 22px; border-radius: 4px;" title="{{ __('Add New Material (Alt + M / Option + M)') }}">
-                                            <i class="bi bi-plus-lg" style="font-size: 11px;"></i>
-                                        </button>
-                                        <kbd class="modal-kbd-hint">Alt + M</kbd>
-                                    </div>
+                                <label class="form-label">
+                                    <span>{{ __('Select Material') }}</span>
+                                    <kbd class="modal-kbd-hint">Enter ↵</kbd>
                                 </label>
-                                <x-select name="material_id" id="material_id" placeholder="Select Material"></x-select>
+                                <x-select name="material_id" id="material_id"></x-select>
                                 <span id="material_idErrorMessage" class="text-danger errorSpan"></span>
                             </div>
                         </div>
@@ -336,7 +293,7 @@
                                     <span>{{ __('Select Salesman') }}</span>
                                     <kbd class="modal-kbd-hint">Enter ↵</kbd>
                                 </label>
-                                <x-select name="salesman_id" placeholder="Select Salesman"></x-select>
+                                <x-select name="salesman_id"></x-select>
                                 <span id="salesman_idErrorMessage" class="text-danger errorSpan"></span>
                             </div>
 
@@ -425,226 +382,6 @@
                     </button>
                     <button type="submit" class="btn btn-submit" id="btnSubmit">
                         {{ __('Submit') }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!--=== Quick Create Brand Modal ===-->
-<div class="modal fade" id="modalQuickCreateBrand" tabindex="-1" aria-labelledby="modalQuickCreateBrandLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
-            <form id="formQuickCreateBrand" method="POST" action="{{ route('shop.brand.store') }}">
-                @csrf
-                <div class="modal-header d-flex align-items-center justify-content-between" style="background: #1e293b; color: #fff; border-radius: 12px 12px 0 0; padding: 14px 20px;">
-                    <h6 class="modal-title m-0 text-white font-weight-bold" id="modalQuickCreateBrandLabel">
-                        <i class="bi bi-patch-plus me-1"></i> {{ __('Create New Brand') }}
-                    </h6>
-                    <button type="button" class="btn-close btn-close-white ms-auto" id="btnCloseQuickBrandX" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close" style="z-index: 1080; cursor: pointer; position: relative; opacity: 1;"></button>
-                </div>
-                <div class="modal-body" style="padding: 20px;">
-                    <div class="mb-3">
-                        <label for="quick_brand_name" class="form-label font-weight-bold text-dark mb-1">
-                            {{ __('Brand Name') }} <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" class="form-control" id="quick_brand_name" name="name" placeholder="{{ __('Enter Brand Name') }}" required />
-                        <span id="quick_brand_name_error" class="text-danger small mt-1 d-block"></span>
-                    </div>
-                </div>
-                <div class="modal-footer" style="background: #f8fafc; border-radius: 0 0 12px 12px; padding: 10px 20px;">
-                    <button type="button" class="btn btn-secondary py-1 px-3" id="btnCloseQuickBrandBtn" data-bs-dismiss="modal" data-dismiss="modal" style="z-index: 1080; cursor: pointer; position: relative;">
-                        {{ __('Close') }}
-                    </button>
-                    <button type="submit" class="btn btn-primary py-1 px-4" id="btnSubmitQuickBrand">
-                        {{ __('Save Brand') }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!--=== Quick Create Category Modal ===-->
-<div class="modal fade" id="modalQuickCreateCategory" tabindex="-1" aria-labelledby="modalQuickCreateCategoryLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
-            <form id="formQuickCreateCategory" method="POST" action="{{ route('shop.category.store') }}" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-header d-flex align-items-center justify-content-between" style="background: #1e293b; color: #fff; border-radius: 12px 12px 0 0; padding: 14px 20px;">
-                    <h6 class="modal-title m-0 text-white font-weight-bold" id="modalQuickCreateCategoryLabel">
-                        <i class="bi bi-patch-plus me-1"></i> {{ __('Create New Category') }}
-                    </h6>
-                    <button type="button" class="btn-close btn-close-white ms-auto" id="btnCloseQuickCategoryX" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close" style="z-index: 1080; cursor: pointer; position: relative; opacity: 1;"></button>
-                </div>
-                <div class="modal-body" style="padding: 20px;">
-                    <div class="mb-3">
-                        <label for="quick_category_name" class="form-label font-weight-bold text-dark mb-1">
-                            {{ __('Category Name') }} <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" class="form-control" id="quick_category_name" name="name" placeholder="{{ __('Enter Category Name') }}" required />
-                        <span id="quick_category_name_error" class="text-danger small mt-1 d-block"></span>
-                    </div>
-                    <div class="mb-3">
-                        <label for="quick_category_thumbnail" class="form-label font-weight-bold text-dark mb-1">
-                            {{ __('Category Image') }} <span class="text-danger">*</span>
-                        </label>
-                        <input type="file" class="form-control" id="quick_category_thumbnail" name="thumbnail" accept="image/*" required onchange="previewQuickCategoryImg(this)" />
-                        <span id="quick_category_thumbnail_error" class="text-danger small mt-1 d-block"></span>
-                        <div class="mt-2 text-center d-none" id="quickCategoryImgPreviewContainer">
-                            <img id="quickCategoryImgPreviewTag" src="#" alt="Preview" class="img-thumbnail" style="max-height: 100px;" />
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="quick_category_description" class="form-label font-weight-bold text-dark mb-1">
-                            {{ __('Description') }}
-                        </label>
-                        <textarea name="description" id="quick_category_description" class="form-control" rows="3" placeholder="{{ __('Enter description') }}"></textarea>
-                        <span id="quick_category_description_error" class="text-danger small mt-1 d-block"></span>
-                    </div>
-                </div>
-                <div class="modal-footer" style="background: #f8fafc; border-radius: 0 0 12px 12px; padding: 10px 20px;">
-                    <button type="button" class="btn btn-secondary py-1 px-3" id="btnCloseQuickCategoryBtn" data-bs-dismiss="modal" data-dismiss="modal" style="z-index: 1080; cursor: pointer; position: relative;">
-                        {{ __('Close') }}
-                    </button>
-                    <button type="submit" class="btn btn-primary py-1 px-4" id="btnSubmitQuickCategory">
-                        {{ __('Save Category') }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!--=== Quick Create Sub Category Modal ===-->
-<div class="modal fade" id="modalQuickCreateSubCategory" tabindex="-1" aria-labelledby="modalQuickCreateSubCategoryLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
-            <form id="formQuickCreateSubCategory" method="POST" action="{{ route('shop.subcategory.store') }}" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-header d-flex align-items-center justify-content-between" style="background: #1e293b; color: #fff; border-radius: 12px 12px 0 0; padding: 14px 20px;">
-                    <h6 class="modal-title m-0 text-white font-weight-bold" id="modalQuickCreateSubCategoryLabel">
-                        <i class="bi bi-patch-plus me-1"></i> {{ __('Create New Sub Category') }}
-                    </h6>
-                    <button type="button" class="btn-close btn-close-white ms-auto" id="btnCloseQuickSubCategoryX" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close" style="z-index: 1080; cursor: pointer; position: relative; opacity: 1;"></button>
-                </div>
-                <div class="modal-body" style="padding: 20px;">
-                    <div class="mb-3">
-                        <label for="quick_subcategory_category_select" class="form-label font-weight-bold text-dark mb-1">
-                            {{ __('Select Category') }} <span class="text-danger">*</span>
-                        </label>
-                        <select name="category[]" id="quick_subcategory_category_select" class="form-control select2" data-placeholder="{{ __('Select Category') }}" multiple required style="width: 100%;">
-                            @foreach(\App\Models\Category::active()->get() as $cat)
-                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                            @endforeach
-                        </select>
-                        <span id="quick_subcategory_category_error" class="text-danger small mt-1 d-block"></span>
-                    </div>
-                    <div class="mb-3">
-                        <label for="quick_subcategory_name" class="form-label font-weight-bold text-dark mb-1">
-                            {{ __('Sub Category Name') }} <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" class="form-control" id="quick_subcategory_name" name="name" placeholder="{{ __('Enter Sub Category Name') }}" required />
-                        <span id="quick_subcategory_name_error" class="text-danger small mt-1 d-block"></span>
-                    </div>
-                    <div class="mb-3">
-                        <label for="quick_subcategory_thumbnail" class="form-label font-weight-bold text-dark mb-1">
-                            {{ __('Sub Category Image') }} <span class="text-danger">*</span>
-                        </label>
-                        <input type="file" class="form-control" id="quick_subcategory_thumbnail" name="thumbnail" accept="image/*" required onchange="previewQuickSubCategoryImg(this)" />
-                        <span id="quick_subcategory_thumbnail_error" class="text-danger small mt-1 d-block"></span>
-                        <div class="mt-2 text-center d-none" id="quickSubCategoryImgPreviewContainer">
-                            <img id="quickSubCategoryImgPreviewTag" src="#" alt="Preview" class="img-thumbnail" style="max-height: 100px;" />
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer" style="background: #f8fafc; border-radius: 0 0 12px 12px; padding: 10px 20px;">
-                    <button type="button" class="btn btn-secondary py-1 px-3" id="btnCloseQuickSubCategoryBtn" data-bs-dismiss="modal" data-dismiss="modal" style="z-index: 1080; cursor: pointer; position: relative;">
-                        {{ __('Close') }}
-                    </button>
-                    <button type="submit" class="btn btn-primary py-1 px-4" id="btnSubmitQuickSubCategory">
-                        {{ __('Save Sub Category') }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!--=== Quick Create Unit Modal ===-->
-<div class="modal fade" id="modalQuickCreateUnit" tabindex="-1" aria-labelledby="modalQuickCreateUnitLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
-            <form id="formQuickCreateUnit" method="POST" action="{{ route('shop.unit.store') }}">
-                @csrf
-                <div class="modal-header d-flex align-items-center justify-content-between" style="background: #1e293b; color: #fff; border-radius: 12px 12px 0 0; padding: 14px 20px;">
-                    <h6 class="modal-title m-0 text-white font-weight-bold" id="modalQuickCreateUnitLabel">
-                        <i class="bi bi-patch-plus me-1"></i> {{ __('Create New Unit') }}
-                    </h6>
-                    <button type="button" class="btn-close btn-close-white ms-auto" id="btnCloseQuickUnitX" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close" style="z-index: 1080; cursor: pointer; position: relative; opacity: 1;"></button>
-                </div>
-                <div class="modal-body" style="padding: 20px;">
-                    <div class="mb-3">
-                        <label for="quick_unit_name" class="form-label font-weight-bold text-dark mb-1">
-                            {{ __('Name') }} <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" class="form-control" id="quick_unit_name" name="name" placeholder="{{ __('Enter Unit Name') }}" required />
-                        <span id="quick_unit_name_error" class="text-danger small mt-1 d-block"></span>
-                    </div>
-                </div>
-                <div class="modal-footer" style="background: #f8fafc; border-radius: 0 0 12px 12px; padding: 10px 20px;">
-                    <button type="button" class="btn btn-secondary py-1 px-3" id="btnCloseQuickUnitBtn" data-bs-dismiss="modal" data-dismiss="modal" style="z-index: 1080; cursor: pointer; position: relative;">
-                        {{ __('Close') }}
-                    </button>
-                    <button type="submit" class="btn btn-primary py-1 px-4" id="btnSubmitQuickUnit">
-                        {{ __('Save Unit') }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!--=== Quick Create Material Modal ===-->
-<div class="modal fade" id="modalQuickCreateMaterial" tabindex="-1" aria-labelledby="modalQuickCreateMaterialLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
-            <form id="formQuickCreateMaterial" method="POST" action="{{ route('shop.material.store') }}">
-                @csrf
-                <div class="modal-header d-flex align-items-center justify-content-between" style="background: #1e293b; color: #fff; border-radius: 12px 12px 0 0; padding: 14px 20px;">
-                    <h6 class="modal-title m-0 text-white font-weight-bold" id="modalQuickCreateMaterialLabel">
-                        <i class="bi bi-patch-plus me-1"></i> {{ __('Create New Material') }}
-                    </h6>
-                    <button type="button" class="btn-close btn-close-white ms-auto" id="btnCloseQuickMaterialX" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close" style="z-index: 1080; cursor: pointer; position: relative; opacity: 1;"></button>
-                </div>
-                <div class="modal-body" style="padding: 20px;">
-                    <div class="mb-3">
-                        <label class="form-label d-flex align-items-center gap-2 justify-content-between">
-                            <span>{{ __('Code') }} <span class="text-danger">*</span></span>
-                        </label>
-                        <div class="input-group flex-nowrap">
-                            <input type="text" class="form-control disabledCls" name="code" placeholder="{{ __('Code') }}" id="quick_material_code" value="" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4);" required readonly>
-                            <button class="btn btn-secondary" type="button" id="btnGenerateQuickMaterialCode" onclick="generateQuickMaterialCode()" data-bs-toggle="tooltip" title="{{ __('Generate Code') }}">
-                                <i class="bi bi-arrow-repeat"></i>
-                            </button>
-                        </div>
-                        <span id="quick_material_code_error" class="text-danger small mt-1 d-block"></span>
-                    </div>
-                    <div class="mb-3">
-                        <label for="quick_material_name" class="form-label font-weight-bold text-dark mb-1">
-                            {{ __('Name') }} <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" class="form-control" id="quick_material_name" name="name" placeholder="{{ __('Enter Material Name') }}" required />
-                        <span id="quick_material_name_error" class="text-danger small mt-1 d-block"></span>
-                    </div>
-                </div>
-                <div class="modal-footer" style="background: #f8fafc; border-radius: 0 0 12px 12px; padding: 10px 20px;">
-                    <button type="button" class="btn btn-secondary py-1 px-3" id="btnCloseQuickMaterialBtn" data-bs-dismiss="modal" data-dismiss="modal" style="z-index: 1080; cursor: pointer; position: relative;">
-                        {{ __('Close') }}
-                    </button>
-                    <button type="submit" class="btn btn-primary py-1 px-4" id="btnSubmitQuickMaterial">
-                        {{ __('Save Material') }}
                     </button>
                 </div>
             </form>

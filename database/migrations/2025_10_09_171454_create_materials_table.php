@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('materials', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('code',4);
+            $table->string('code', 50);
             $table->foreignIdFor(Shop::class)->nullable()->constrained()->cascadeOnDelete();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

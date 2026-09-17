@@ -6,20 +6,29 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ColorRequest;
 use App\Models\Color;
 use App\Repositories\ColorRepository;
+use Illuminate\Http\Request;
 
 class ColorController extends Controller
 {
     /**
      * Display the colors list.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $rootShop = generaleSetting('rootShop');
+        $search = $request->search ?? null;
 
-        // Get all colors (Super Admin created + Shop created)
-        $colors = Color::with('shop')->orderByDesc('id')->paginate(20)->withQueryString();
+        // Get colors
+        $colors = Color::when($search, function ($query) use ($search) {
+                return $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('color_code', 'like', '%' . $search . '%');
+                });
+            })
+            ->latest('id')
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('admin.color.index', compact('colors', 'rootShop'));
+        return view('admin.color.index', compact('colors', 'search'));
     }
 
     /**
@@ -52,5 +61,21 @@ class ColorController extends Controller
         ]);
 
         return back()->withSuccess(__('Status updated successfully'));
+    }
+
+    /**
+     * delete a color (Super Admin can delete any color)
+     */
+    public function destroy(Color $color)
+    {
+        $user = auth()->user();
+        if (! $user || (! $user->hasRole('root') && ! $user->can('admin.color.destroy'))) {
+            abort(403, __('Unauthorized action. Only Super Admin can delete colors here.'));
+        }
+
+        $color->translations()->delete();
+        $color->delete();
+
+        return to_route('admin.color.index')->withSuccess(__('Color deleted successfully'));
     }
 }

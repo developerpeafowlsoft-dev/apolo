@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
@@ -25,9 +26,43 @@ class SubCategory extends Model
         return $this->belongsToMany(Category::class, 'category_subcategories');
     }
 
-    public function shop(): BelongsTo
+    public function products(): BelongsToMany
     {
-        return $this->belongsTo(Shop::class, 'shop_id');
+        return $this->belongsToMany(Product::class, 'product_subcategories');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function getInwardProductsCountAttribute($value)
+    {
+        if ($value !== null) {
+            return (int) $value;
+        }
+
+        return (int) \Illuminate\Support\Facades\DB::table('inward_products')
+            ->join('product_subcategories', 'inward_products.product_id', '=', 'product_subcategories.product_id')
+            ->where('product_subcategories.sub_category_id', $this->id)
+            ->count();
+    }
+
+    /**
+     * Get the number of active online products associated with this subcategory.
+     */
+    public function getOnlineProductsCountAttribute($value)
+    {
+        if ($value !== null) {
+            return (int) $value;
+        }
+
+        return (int) \Illuminate\Support\Facades\DB::table('products')
+            ->join('product_subcategories', 'products.id', '=', 'product_subcategories.product_id')
+            ->where('product_subcategories.sub_category_id', $this->id)
+            ->where('products.is_online_product', 1)
+            ->where('products.is_active', 1)
+            ->count();
     }
 
     /**

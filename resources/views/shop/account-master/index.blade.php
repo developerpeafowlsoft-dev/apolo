@@ -4,12 +4,31 @@
     <div class="d-flex align-items-center flex-wrap gap-3 justify-content-between px-3">
         <h4>
             {{__('Account Master')}}
+            @if(isset($search) && $search)
+                <span class="badge bg-primary fs-6 ms-2">{{ __('Found') }}: {{ $accountMasters->total() }}</span>
+            @endif
         </h4>
-        <div>
-            <a href="{{route('shop.accountMaster.create')}}" class="btn py-2 btn-primary">
-                <i class="bi bi-patch-plus"></i>
-                {{ __('Create New') }}
-            </a>
+
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <form action="{{ route('shop.accountMaster.index') }}" method="GET" class="d-flex align-items-center">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fa fa-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="{{ __('Search Party / GSTIN / Mobile...') }}" value="{{ request('search') }}" style="min-width: 250px;">
+                    @if(request('search'))
+                        <a href="{{ route('shop.accountMaster.index') }}" class="btn btn-outline-secondary border-start-0" title="{{ __('Clear Search') }}">
+                            <i class="fa fa-times text-danger"></i>
+                        </a>
+                    @endif
+                    <button type="submit" class="btn btn-primary">{{ __('Search') }}</button>
+                </div>
+            </form>
+
+            <div>
+                <a href="{{route('shop.accountMaster.create')}}" class="btn py-2 btn-primary text-nowrap">
+                    <i class="bi bi-patch-plus"></i>
+                    {{ __('Create New') }}
+                </a>
+            </div>
         </div>
     </div>
 
@@ -29,6 +48,7 @@
                                 <th>{{ __('Contact Person') }}</th>
                                 <th>{{ __('Mobile No') }}</th>
                                 <th>{{ __('Bank Name') }}</th>
+                                <th class="text-center">{{ __('Party Code') }}</th>
                                 @hasPermission('shop.accountMaster.toggle')
                                 <th>{{ __('Status') }}</th>
                                 @endhasPermission
@@ -44,13 +64,21 @@
                                 @endphp
                                 <tr>
                                     <td class="text-center">{{ $serial }}</td>
-                                    <td>{{ $accountMaster->accountshortcode ?? '' }}</td>
-                                    <td>{{ $accountMaster->accountName ?? '' }}</td>
-                                    <td>{{ $accountMaster->account?->name . " (" . $accountMaster->account?->code . ")" ?? '' }}</td>
-                                    <td>{{ $accountMaster->city?->name ?? '' }}</td>
-                                    <td>{{ $accountMaster->contperson ?? '' }}</td>
-                                    <td>{{ $accountMaster->cont_info_mobile1 ?? '' }}</td>
-                                    <td>{{ $accountMaster->bank_info_bank_name ?? '' }}</td>
+                                    <td><span class="badge bg-light-primary text-primary fw-bold font-monospace">{{ $accountMaster->accountshortcode ?: '-' }}</span></td>
+                                    <td>{{ $accountMaster->accountName ?? '-' }}</td>
+                                    <td>{{ $accountMaster->account ? $accountMaster->account->name . " (" . $accountMaster->account->code . ")" : '-' }}</td>
+                                    <td>{{ $accountMaster->city?->name ?? '-' }}</td>
+                                    <td>{{ $accountMaster->contperson ?: '-' }}</td>
+                                    <td>{{ $accountMaster->cont_info_mobile1 ?: '-' }}</td>
+                                    <td>{{ $accountMaster->bank_info_bank_name ?: '-' }}</td>
+                                    <td class="text-center">
+                                        <label class="switch mb-0" title="{{ __('Toggle Show as Party Code in Dropdowns') }}">
+                                            <a href="{{ route('shop.accountMaster.partyCodeToggle', $accountMaster->id) }}" class="toggle-status-link">
+                                                <input type="checkbox" {{ $accountMaster->is_party_code ? 'checked' : '' }}>
+                                                <span class="slider round"></span>
+                                            </a>
+                                        </label>
+                                    </td>
                                     @hasPermission('shop.accountMaster.toggle')
                                     <td class="text-center">
                                         <label class="switch mb-0">
@@ -81,7 +109,7 @@
                         </table>
                     </div>
                     <div class="my-3">
-                        {{ $accountMasters->links() }}
+                        {{ $accountMasters->withQueryString()->links() }}
                     </div>
                 </div>
             </div>

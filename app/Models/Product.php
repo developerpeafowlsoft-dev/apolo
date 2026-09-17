@@ -642,7 +642,6 @@ class Product extends Model
             'salesman_comm',
             'salesman_comm_amt',
             'name',
-            'item_short_name',
             'is_online_product',
         ]);
     }

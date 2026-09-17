@@ -29,6 +29,11 @@ class InwardInvoice extends Model
         return $this->belongsTo(CounterMaster::class,'counter_master_id','id');
     }
 
+    public function shop(): BelongsTo
+    {
+        return $this->belongsTo(Shop::class,'shop_id','id');
+    }
+
     public function partyCode(): BelongsTo
     {
         return $this->belongsTo(AccountMaster::class,'inward_party_code','id');
@@ -77,16 +82,6 @@ class InwardInvoice extends Model
     public function scopeIsPurchase($query)
     {
         return $query->where('is_purchase',1);
-    }
-
-    public function scopeIsKachi($query)
-    {
-        return $query->where('is_kachi', 1);
-    }
-
-    public function scopeNotKachi($query)
-    {
-        return $query->where('is_kachi', 0);
     }
 
 }

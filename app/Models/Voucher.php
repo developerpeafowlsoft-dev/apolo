@@ -11,7 +11,7 @@ class Voucher extends Model
 
     protected $fillable = [
         'voucher_no', 'voucher_type', 'status', 'date',
-        'narration', 'shop_id', 'financial_year_id', 'sequence_id', 'branch_id', 'original_id'
+        'narration', 'shop_id', 'financial_year_id', 'sequence_id', 'branch_id', 'original_id', 'reverses_voucher_id',
     ];
 
     public function branch() {
@@ -26,5 +26,15 @@ class Voucher extends Model
     }
     public function financialYear() {
         return $this->belongsTo(FinancialYear::class);
+    }
+
+    /** The voucher this one reverses, if it is a contra. */
+    public function reverses() {
+        return $this->belongsTo(Voucher::class, 'reverses_voucher_id');
+    }
+
+    /** The contra voucher that reverses this one, if it has been reversed. */
+    public function reversal() {
+        return $this->hasOne(Voucher::class, 'reverses_voucher_id');
     }
 }

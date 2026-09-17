@@ -25,25 +25,19 @@ class CategoryRepository extends Repository
      */
     public static function storeByRequest(CategoryRequest $request): Category
     {
-        $thumbnail = null;
-        if ($request->hasFile('thumbnail')) {
-            $thumbnail = MediaRepository::storeByRequest(
-                $request->file('thumbnail'),
-                'categories',
-                'image'
-            );
-        }
-
-        $shop = generaleSetting('shop');
-        $isShop = request()->is('shop/*') || auth()->user()?->hasRole('shop');
-        $shopId = $isShop ? $shop?->id : null;
+        $thumbnail = MediaRepository::storeByRequest(
+            $request->file('thumbnail'),
+            'categories',
+            'image'
+        );
 
         $category = self::create([
             'name' => $request->name,
-            'shop_id' => $shopId,
-            'media_id' => $thumbnail?->id,
+            'media_id' => $thumbnail->id ?? null,
             'description' => $request->description,
             'status' => true,
+            'created_by' => auth()->id() ?? 1,
+            'show_in_hero' => $request->boolean('show_in_hero'),
         ]);
 
         // create translation
@@ -77,11 +71,14 @@ class CategoryRepository extends Repository
             );
         }
 
-        $category->update([
+        $updateData = [
             'name' => $request->name,
-            'media_id' => $thumbnail->id ?? null,
+            'media_id' => $thumbnail->id ?? $category->media_id,
             'description' => $request->description,
-        ]);
+            'show_in_hero' => $request->boolean('show_in_hero'),
+        ];
+
+        $category->update($updateData);
 
         // update and create translation
         foreach ($request->names ?? [] as $lang => $name) {

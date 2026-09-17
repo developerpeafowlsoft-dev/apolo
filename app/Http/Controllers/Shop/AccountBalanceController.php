@@ -12,14 +12,28 @@ use Illuminate\Http\Request;
 
 class AccountBalanceController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $shop = generaleSetting('shop');
+        $rootShop = generaleSetting('rootShop');
+        $currentShop = generaleSetting('shop');
+        $shopIds = array_filter(array_unique([$rootShop?->id, $currentShop?->id, 1, 14]));
+        $search = $request->search ?? null;
 
-        $accounts = Account::active()->get();
-        $accountBalances = AccountBalance::with('account:id,name,code','financialYear:id,name')->where('shop_id',$shop->id)->paginate(10);
+        $accounts = Account::active()->orderBy('name')->get();
         
-        return view('shop.account-balance.index',compact('accounts','accountBalances'));
+        $accountBalances = AccountBalance::with('account:id,name,code', 'financialYear:id,name')
+            ->whereIn('shop_id', $shopIds)
+            ->when($search, function ($query) use ($search) {
+                return $query->whereHas('account', function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('code', 'like', '%' . $search . '%');
+                });
+            })
+            ->latest('id')
+            ->paginate(15)
+            ->withQueryString();
+        
+        return view('shop.account-balance.index', compact('accounts', 'accountBalances', 'search'));
     }
 
     public function store(AccountBalanceRequest $request)

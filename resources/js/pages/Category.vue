@@ -188,8 +188,8 @@ const fetchSubcategories = async (categoryId) => {
 const fetchCategories = async () => {
     isCategoriesLoading.value = true;
     try {
-        const response = await axios.get('/categories');
-        categories.value = response.data.data.categories || [];
+        const rawCats = response.data.data.categories || [];
+        categories.value = rawCats.filter(c => Boolean(c.show_in_hero));
         
         if (categories.value.length > 0) {
             fetchCategoryProductCounts();

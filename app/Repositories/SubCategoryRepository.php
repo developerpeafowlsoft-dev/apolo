@@ -26,24 +26,22 @@ class SubCategoryRepository extends Repository
     public static function storeByRequest(SubCategoryRequest $request): SubCategory
     {
         $currentShop = generaleSetting('shop');
-        $isShop = request()->is('shop/*') || auth()->user()?->hasRole('shop');
-        $shopId = $isShop ? $currentShop?->id : null;
+        $rootShop = generaleSetting('rootShop');
+        $shop = $currentShop ?: $rootShop;
 
-        $thumbnail = null;
-        if ($request->hasFile('thumbnail')) {
-            $thumbnail = MediaRepository::storeByRequest(
-                $request->file('thumbnail'),
-                'categories',
-                'image'
-            );
-        }
+        $thumbnail = MediaRepository::storeByRequest(
+            $request->file('thumbnail'),
+            'categories',
+            'image'
+        );
 
         $subCategory = self::create([
-            'shop_id' => $shopId,
+            'shop_id' => $shop->id ?? 1,
             'name' => $request->name,
-            'media_id' => $thumbnail?->id,
+            'media_id' => $thumbnail->id ?? null,
             'slug' => Str::slug($request->name, '-'),
             'is_active' => true,
+            'created_by' => auth()->id() ?? 1,
         ]);
 
         $subCategory->categories()->attach($request->category);

@@ -1,15 +1,36 @@
 @extends('layouts.app')
+
 @section('header-title', __('Category List'))
+
 @section('content')
     <div class="d-flex align-items-center flex-wrap gap-3 justify-content-between px-3">
         <h4>
             {{ __('Category List') }}
+            @if(request('search'))
+                <span class="badge bg-primary fs-6 ms-2">{{ __('Found') }}: {{ $categories->total() }}</span>
+            @endif
         </h4>
-        <div>
-            <button type="button" data-bs-toggle="modal" data-bs-target="#createCategory" class="btn py-2 btn-primary">
-                <i class="bi bi-patch-plus"></i>
-                {{ __('Create New') }}
-            </button>
+
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <form action="{{ route('shop.category.index') }}" method="GET" class="d-flex align-items-center">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fa fa-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="{{ __('Search category...') }}" value="{{ request('search') }}" style="min-width: 200px;">
+                    @if(request('search'))
+                        <a href="{{ route('shop.category.index') }}" class="btn btn-outline-secondary border-start-0" title="{{ __('Clear Search') }}">
+                            <i class="fa fa-times text-danger"></i>
+                        </a>
+                    @endif
+                    <button type="submit" class="btn btn-primary">{{ __('Search') }}</button>
+                </div>
+            </form>
+
+            @hasPermission('shop.category.create')
+            <a href="{{ route('shop.category.create') }}" class="btn py-2 btn-primary">
+                <i class="fa fa-plus-circle"></i>
+                {{__('Create New')}}
+            </a>
+            @endhasPermission
         </div>
     </div>
 
@@ -23,14 +44,22 @@
                     </h5>
                 </div>
                 <div class="table-responsive">
-                    <table class="table border-left-right table-responsive-md">
+                    <table class="table border-left-right table-responsive-md align-middle">
                         <thead>
                             <tr>
                                 <th class="text-center">{{ __('SL') }}</th>
                                 <th>{{ __('Thumbnail') }}</th>
                                 <th>{{ __('Name') }}</th>
                                 <th>{{ __('Created By') }}</th>
-                                <th>{{ __('Status') }}</th>
+                                <th class="text-center">{{ __('Inward Product') }}</th>
+                                <th class="text-center">{{ __('Online Product') }}</th>
+                                <th class="text-center">{{ __('Show in Hero') }}</th>
+                                @hasPermission('shop.category.toggle')
+                                <th class="text-center">{{ __('Status') }}</th>
+                                @endhasPermission
+                                @hasPermission('shop.category.edit')
+                                <th class="text-center">{{ __('Action') }}</th>
+                                @endhasPermission
                             </tr>
                         </thead>
                         <tbody>
@@ -42,31 +71,59 @@
                                 <td class="text-center">{{ $serial }}</td>
 
                                 <td>
-                                    <img src="{{ $category->thumbnail }}" width="50">
+                                    <img src="{{ $category->thumbnail }}" width="50" height="50" class="rounded object-fit-cover">
                                 </td>
 
-                                <td>{{ $category->name }}</td>
+                                <td class="fw-semibold">{{ $category->name }}</td>
 
                                 <td>
-                                    @if($category->shop_id && $category->shop_id != $rootShop?->id && $category->shop)
-                                        <span class="badge rounded-pill text-bg-info px-2 py-1" style="font-size: 12px;">
-                                            {{ $category->shop->name }}
-                                        </span>
-                                    @else
-                                        <span class="badge rounded-pill text-bg-secondary px-2 py-1" style="font-size: 12px;">
-                                            {{ __('Super Admin') }}
-                                        </span>
-                                    @endif
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="fa-solid fa-user me-1 text-secondary"></i>
+                                        {{ $category->creator?->name ?? __('Super Admin') }}
+                                    </span>
                                 </td>
 
-                                <td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary-subtle text-primary px-3 py-1.5 fs-6 fw-bold">
+                                        {{ $category->inward_products_count ?? 0 }}
+                                    </span>
+                                </td>
+
+                                <td class="text-center">
+                                    <span class="badge bg-success-subtle text-success px-3 py-1.5 fs-6 fw-bold">
+                                        {{ $category->online_products_count ?? 0 }}
+                                    </span>
+                                </td>
+
+                                <td class="text-center">
                                     <label class="switch mb-0">
-                                        <a href="javascript:void(0)">
+                                        <a href="{{ route('shop.category.hero-toggle', $category->id) }}" title="{{ __('Toggle Hero Section Display') }}">
+                                            <input type="checkbox" {{ $category->show_in_hero ? 'checked' : '' }}>
+                                            <span class="slider round"></span>
+                                        </a>
+                                    </label>
+                                </td>
+
+                                @hasPermission('shop.category.toggle')
+                                <td class="text-center">
+                                    <label class="switch mb-0">
+                                        <a href="{{ route('shop.category.toggle', $category->id) }}" title="{{ __('Toggle Status') }}">
                                             <input type="checkbox" {{ $category->status ? 'checked' : '' }}>
                                             <span class="slider round"></span>
                                         </a>
                                     </label>
                                 </td>
+                                @endhasPermission
+
+                                @hasPermission('shop.category.edit')
+                                <td class="text-center">
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <a href="{{ route('shop.category.edit', $category->id) }}" class="btn btn-outline-primary circleIcon" title="{{ __('Edit') }}">
+                                            <img src="{{ asset('assets/icons-admin/edit.svg') }}" alt="edit" loading="lazy" />
+                                        </a>
+                                    </div>
+                                </td>
+                                @endhasPermission
                             </tr>
                         @empty
                             <tr>
@@ -84,80 +141,4 @@
         </div>
 
     </div>
-
-    <!--=== Create Category Modal ===-->
-    <form action="{{ route('shop.category.store') }}" method="POST" enctype="multipart/form-data">
-        @csrf
-        <div class="modal fade" id="createCategory" tabindex="-1" aria-labelledby="createCategoryLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="createCategoryLabel">
-                            {{ __('Create Category') }}
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="name" class="form-label">{{ __('Category Name') }} <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="name" name="name"
-                                placeholder="{{ __('Enter Category Name') }}" value="{{ old('name') }}" required />
-                            @if(isset($errors) && $errors->has('name'))
-                                <p class="text text-danger m-0">{{ $errors->first('name') }}</p>
-                            @endif
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="thumbnail" class="form-label">{{ __('Category Image') }} <span class="text-danger">*</span></label>
-                            <input type="file" class="form-control" id="thumbnail" name="thumbnail" accept="image/*" required onchange="previewCategoryImg(this)" />
-                            @if(isset($errors) && $errors->has('thumbnail'))
-                                <p class="text text-danger m-0">{{ $errors->first('thumbnail') }}</p>
-                            @endif
-                            <div class="mt-2 text-center d-none" id="previewCategoryImgContainer">
-                                <img id="previewCategoryImgTag" src="#" alt="Category Image Preview" class="img-thumbnail" style="max-height: 120px;" />
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="description" class="form-label">{{ __('Description') }}</label>
-                            <textarea name="description" id="description" class="form-control" rows="3" placeholder="{{ __('Enter description') }}">{{ old('description') }}</textarea>
-                            @if(isset($errors) && $errors->has('description'))
-                                <p class="text text-danger m-0">{{ $errors->first('description') }}</p>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            {{ __('Close') }}
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            {{ __('Submit') }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
-
-    <script>
-        function previewCategoryImg(input) {
-            if (input.files && input.files[0]) {
-                var reader = new FileReader();
-                reader.onload = function (e) {
-                    document.getElementById('previewCategoryImgTag').src = e.target.result;
-                    document.getElementById('previewCategoryImgContainer').classList.remove('d-none');
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-    </script>
-
-    @if(isset($errors) && ($errors->has('name') || $errors->has('thumbnail') || $errors->has('description')))
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                var createCategoryModal = new bootstrap.Modal(document.getElementById('createCategory'));
-                createCategoryModal.show();
-            });
-        </script>
-    @endif
 @endsection

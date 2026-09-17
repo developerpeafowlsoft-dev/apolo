@@ -7,19 +7,25 @@ use App\Http\Requests\UnitRequest;
 use App\Models\Unit;
 use App\Repositories\UnitRepository;
 
+use Illuminate\Http\Request;
+
 class UnitController extends Controller
 {
     /**
      * Display the unit list.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $rootShop = generaleSetting('rootShop');
+        $search = $request->search ?? null;
 
-        // Get all units (Super Admin created + Shop created)
-        $units = Unit::with('shop')->orderByDesc('id')->paginate(20)->withQueryString();
+        $units = Unit::when($search, function ($query) use ($search) {
+                return $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->latest('id')
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('admin.unit.index', compact('units', 'rootShop'));
+        return view('admin.unit.index', compact('units', 'search'));
     }
 
     /**
@@ -52,5 +58,21 @@ class UnitController extends Controller
         ]);
 
         return back()->withSuccess(__('Status updated successfully'));
+    }
+
+    /**
+     * delete a unit (Super Admin can delete any unit)
+     */
+    public function destroy(Unit $unit)
+    {
+        $user = auth()->user();
+        if (! $user || (! $user->hasRole('root') && ! $user->can('admin.unit.destroy'))) {
+            abort(403, __('Unauthorized action. Only Super Admin can delete units here.'));
+        }
+
+        $unit->translations()->delete();
+        $unit->delete();
+
+        return to_route('admin.unit.index')->withSuccess(__('Unit deleted successfully'));
     }
 }

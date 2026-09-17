@@ -36,28 +36,34 @@ class InwardProductRepository extends Repository
             'quantity' => $row['qty'],
             'buy_price' => $row['purcRate'],
             'price' => $row['amount'],
-            'discount_price' => $row['disc'],
+            'discount_price' => $row['disc'] ?? 0,
+            'net_purc_price' => $row['netPurcPrice'] ?? ($row['net_purc_price'] ?? 0),
             'mrp' => $row['mrp'],
             'mark_up' => $row['mark_up'],
             'mark_down' => $row['mark_down'],
             'net_purc_rate' => $row['netPurcRate'],
-            'hsn_master_id' => $row['taxCodeId'],
-            'vat_tax_id' => $row['sgstId'],
+            'hsn_master_id' => $row['taxCodeId'] ?? null,
+            'vat_tax_id' => $row['sgstId'] ?? null,
         ]);
 
 
         if (!empty($row['colorInwardIds'])){
-            foreach ($row['colorInwardIds'] as $colorId) {
-                $product->colors()->attach($colorId, ['price' => $row['mrp']]);
+            $colorIds = array_unique(array_filter((array)$row['colorInwardIds']));
+            $syncColors = [];
+            foreach ($colorIds as $cId) {
+                $syncColors[$cId] = ['price' => $row['mrp']];
             }
+            $product->colors()->sync($syncColors);
         }
 
         if (!empty($row['sizeInwardIds'])){
-            foreach ($row['sizeInwardIds'] as $sizeId) {
-                $product->sizes()->attach($sizeId, ['price' => $row['mrp']]);
+            $sizeIds = array_unique(array_filter((array)$row['sizeInwardIds']));
+            $syncSizes = [];
+            foreach ($sizeIds as $sId) {
+                $syncSizes[$sId] = ['price' => $row['mrp']];
             }
+            $product->sizes()->sync($syncSizes);
         }
-
 
         return $product;
     }
@@ -71,28 +77,32 @@ class InwardProductRepository extends Repository
             'quantity' => $row['qty'],
             'buy_price' => $row['purcRate'],
             'price' => $row['amount'],
-            'discount_price' => $row['disc'],
+            'discount_price' => $row['disc'] ?? 0,
+            'net_purc_price' => $row['netPurcPrice'] ?? ($row['net_purc_price'] ?? 0),
             'mrp' => $row['mrp'],
             'mark_up' => $row['mark_up'],
             'mark_down' => $row['mark_down'],
             'net_purc_rate' => $row['netPurcRate'],
-            'hsn_master_id' => $row['taxCodeId'],
-            'vat_tax_id' => $row['sgstId'],
+            'hsn_master_id' => $row['taxCodeId'] ?? null,
+            'vat_tax_id' => $row['sgstId'] ?? null,
         ]);
 
         // Colors
-        $product->colors()->sync(
-            collect($row['colorInwardIds'] ?? [])
-                ->mapWithKeys(fn ($id) => [$id => ['price' => $row['mrp']]])
-                ->toArray()
-        );
+        $colorIds = array_unique(array_filter((array)($row['colorInwardIds'] ?? [])));
+        $syncColors = [];
+        foreach ($colorIds as $cId) {
+            $syncColors[$cId] = ['price' => $row['mrp']];
+        }
+        $product->colors()->sync($syncColors);
 
         // Sizes
-        $product->sizes()->sync(
-            collect($row['sizeInwardIds'] ?? [])
-                ->mapWithKeys(fn ($id) => [$id => ['price' => $row['mrp']]])
-                ->toArray()
-        );
+        $sizeIds = array_unique(array_filter((array)($row['sizeInwardIds'] ?? [])));
+        $syncSizes = [];
+        foreach ($sizeIds as $sId) {
+            $syncSizes[$sId] = ['price' => $row['mrp']];
+        }
+        $product->sizes()->sync($syncSizes);
+
         return $product;
     }
 

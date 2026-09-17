@@ -8,6 +8,7 @@ use App\Models\OrderProduct;
 use App\Models\ProductPurchase;
 use App\Models\POSReturnProduct;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class CanonicalInventoryService
@@ -31,8 +32,10 @@ class CanonicalInventoryService
      */
     public function resolveCanonicalProductId(int $productId): int
     {
-        // 1. Check if database column exists (for future schema expansion)
-        if (Schema::hasColumn('products', 'canonical_product_id')) {
+        // 1. Check if database column exists (for future schema expansion).
+        //    Cached: this is a schema-introspection round trip, and it used to run
+        //    once per product - thousands of them on a single report load.
+        if (self::hasCanonicalColumn()) {
             $canonicalId = Product::where('id', $productId)->value('canonical_product_id');
             if ($canonicalId) {
                 return (int)$canonicalId;
@@ -67,34 +70,108 @@ class CanonicalInventoryService
         return array_unique($aliases);
     }
 
+    protected static ?bool $hasCanonicalColumn = null;
+
+    protected static function hasCanonicalColumn(): bool
+    {
+        return self::$hasCanonicalColumn ??= Schema::hasColumn('products', 'canonical_product_id');
+    }
+
     /**
-     * Calculate authoritative physical SKU summary for a shop.
-     * Eliminates duplicate catalog stock counting.
+     * Physical-SKU stock and valuation for a shop.
      *
-     * @param int $shopId
-     * @return array
+     * Every figure is pre-aggregated in a handful of grouped queries. The previous
+     * version issued roughly a dozen queries per product inside the loop, which on
+     * this shop meant ~64,700 queries and 87 seconds for one page load.
      */
     public function getShopPhysicalSkuSummary(int $shopId): array
     {
         $valuationService = app(InventoryValuationService::class);
-        $products = Product::where('shop_id', $shopId)->get();
+
+        $products = Product::where('shop_id', $shopId)
+            ->select('id', 'name', 'hsn_master_id', 'vat_tax_id')
+            ->get();
 
         // Group product records by canonical physical SKU
         $skuGroups = [];
         foreach ($products as $p) {
             $canonicalId = $this->resolveCanonicalProductId($p->id);
             if (!isset($skuGroups[$canonicalId])) {
-                $canonicalProduct = Product::find($canonicalId) ?? $p;
                 $skuGroups[$canonicalId] = [
                     'canonical_id' => $canonicalId,
-                    'name' => $canonicalProduct->name,
-                    'hsn_master_id' => $canonicalProduct->hsn_master_id,
-                    'vat_tax_id' => $canonicalProduct->vat_tax_id,
+                    'name' => null,
+                    'hsn_master_id' => null,
+                    'vat_tax_id' => null,
                     'aliases' => [],
                 ];
             }
             $skuGroups[$canonicalId]['aliases'][] = $p->id;
         }
+
+        // Canonical product details, resolved in one pass rather than per group
+        $byId = $products->keyBy('id');
+        $missingCanonical = array_diff(array_keys($skuGroups), $byId->keys()->all());
+        if (!empty($missingCanonical)) {
+            foreach (Product::whereIn('id', $missingCanonical)->select('id', 'name', 'hsn_master_id', 'vat_tax_id')->get() as $extra) {
+                $byId[$extra->id] = $extra;
+            }
+        }
+        foreach ($skuGroups as $cid => $g) {
+            $canonical = $byId[$cid] ?? $byId[$g['aliases'][0]] ?? null;
+            $skuGroups[$cid]['name'] = $canonical?->name;
+            $skuGroups[$cid]['hsn_master_id'] = $canonical?->hsn_master_id;
+            $skuGroups[$cid]['vat_tax_id'] = $canonical?->vat_tax_id;
+        }
+
+        $allAliasIds = [];
+        foreach ($skuGroups as $g) {
+            foreach ($g['aliases'] as $aid) {
+                $allAliasIds[] = $aid;
+            }
+        }
+        $allAliasIds = array_values(array_unique($allAliasIds));
+
+        // --- pre-aggregated lookups -------------------------------------------
+        $costMap = $valuationService->getWeightedAverageCostMap(array_keys($skuGroups));
+
+        $purchasedMap = DB::table('inward_products')
+            ->whereIn('product_id', $allAliasIds)
+            ->groupBy('product_id')
+            ->selectRaw('product_id, SUM(quantity) as qty')
+            ->pluck('qty', 'product_id')
+            ->toArray();
+
+        // Raw joins: the Order model carries a global scope that whereHas() had to
+        // strip anyway, and this keeps both figures to one query each.
+        $soldMap = DB::table('order_products')
+            ->join('orders', 'order_products.order_id', '=', 'orders.id')
+            ->where('orders.shop_id', $shopId)
+            ->whereNotNull('orders.voucher_id')
+            ->whereIn('order_products.product_id', $allAliasIds)
+            ->groupBy('order_products.product_id')
+            ->selectRaw('order_products.product_id as pid, SUM(order_products.quantity) as qty')
+            ->pluck('qty', 'pid')
+            ->toArray();
+
+        $reservedMap = DB::table('order_products')
+            ->join('orders', 'order_products.order_id', '=', 'orders.id')
+            ->where('orders.shop_id', $shopId)
+            ->whereNull('orders.voucher_id')
+            ->where('orders.order_status', '!=', 'Cancelled')
+            ->where('orders.order_status', '!=', \App\Enums\OrderStatus::CANCELLED->value)
+            ->whereIn('order_products.product_id', $allAliasIds)
+            ->groupBy('order_products.product_id')
+            ->selectRaw('order_products.product_id as pid, SUM(order_products.quantity) as qty')
+            ->pluck('qty', 'pid')
+            ->toArray();
+
+        $sumFor = function (array $ids, array $map): int {
+            $total = 0;
+            foreach ($ids as $id) {
+                $total += (int)($map[$id] ?? 0);
+            }
+            return $total;
+        };
 
         $summary = [];
         $totalPurchasedQty = 0;
@@ -107,43 +184,17 @@ class CanonicalInventoryService
         $totalReservedValue = 0.00;
 
         foreach ($skuGroups as $canonicalId => $group) {
-            $aliasIds = array_unique($group['aliases']);
-            $unitCost = $valuationService->getWeightedAverageCost($canonicalId);
+            $aliasIds = array_values(array_unique($group['aliases']));
+            $unitCost = (float)($costMap[$canonicalId] ?? 0.00);
 
-            // 1. Purchased / Received Quantity from Inwards
-            $purchasedQty = (int)InwardProduct::whereIn('product_id', $aliasIds)->sum('quantity');
-            if ($purchasedQty <= 0) {
-                // If not purchased via inward, take the base stock of the canonical product
-                $canonicalProd = Product::find($canonicalId);
-                $purchasedQty = (int)($canonicalProd?->available_stock ?? 0);
-            }
-
-            // 2. Recognized Sold Quantity (Delivered / Vouchered Orders)
-            $recognizedSoldQty = (int)OrderProduct::whereHas('order', function ($q) use ($shopId) {
-                $q->withoutGlobalScopes()
-                  ->where('shop_id', $shopId)
-                  ->whereNotNull('voucher_id');
-            })->whereIn('product_id', $aliasIds)->sum('quantity');
-
-            // 3. Purchase Returns
+            $purchasedQty = $sumFor($aliasIds, $purchasedMap);
+            $recognizedSoldQty = $sumFor($aliasIds, $soldMap);
+            $reservedQty = $sumFor($aliasIds, $reservedMap);
             $purchaseReturnQty = 0;
 
-            // 4. Active Reserved Quantity (Pending / Unfulfilled Web Orders)
-            $reservedQty = (int)OrderProduct::whereHas('order', function ($q) use ($shopId) {
-                $q->withoutGlobalScopes()
-                  ->where('shop_id', $shopId)
-                  ->whereNull('voucher_id')
-                  ->where('order_status', '!=', 'Cancelled')
-                  ->where('order_status', '!=', \App\Enums\OrderStatus::CANCELLED->value);
-            })->whereIn('product_id', $aliasIds)->sum('quantity');
-
-            // 5. Accounting-Owned Quantity = Purchased - Sold - Purchase Returns
             $accountingOwnedQty = max(0, $purchasedQty - $recognizedSoldQty - $purchaseReturnQty);
-
-            // 6. Available Quantity = Accounting-Owned - Active Reserved
             $availableQty = max(0, $accountingOwnedQty - $reservedQty);
 
-            // Valuations
             $accountingOwnedVal = round($accountingOwnedQty * $unitCost, 2);
             $availableVal = round($availableQty * $unitCost, 2);
             $reservedVal = round($reservedQty * $unitCost, 2);
@@ -189,4 +240,5 @@ class CanonicalInventoryService
             ],
         ];
     }
+
 }

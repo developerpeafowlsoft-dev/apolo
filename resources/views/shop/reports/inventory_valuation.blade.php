@@ -63,6 +63,21 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
+    <form method="GET" class="row g-2 align-items-end mb-3">
+        <div class="col-md-5">
+            <label class="form-label small mb-1">{{ __('Find a product') }}</label>
+            <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control"
+                   placeholder="{{ __('Type part of a product name') }}">
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-primary">{{ __('Search') }}</button>
+            <a href="{{ route('shop.reports.inventoryValuation') }}" class="btn btn-outline-secondary">{{ __('Reset') }}</a>
+        </div>
+        <div class="col-md-4 text-md-end small text-muted">
+            {{ __('Showing') }} {{ number_format($products->count()) }} {{ __('of') }} {{ number_format($products->total()) }} {{ __('SKUs') }}
+        </div>
+    </form>
+
                 <table class="table table-hover table-striped align-middle mb-0 text-nowrap">
                     <thead class="table-dark">
                         <tr>
@@ -78,7 +93,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($valuationData['products'] ?? [] as $item)
+                        @forelse($products as $item)
                         <tr>
                             <td class="fw-bold text-dark">{{ $item['name'] }}</td>
                             <td>
@@ -108,6 +123,8 @@
                         </tr>
                     </tfoot>
                 </table>
+
+    <div class="mt-3">{{ $products->links() }}</div>
             </div>
         </div>
     </div>

@@ -24,13 +24,23 @@ class CategoryController extends Controller
         $shop = generaleSetting('rootShop');
 
         $categories = CategoryRepository::query()->active()
-            ->whereHas('shops', function ($query) use ($shop) {
-                $query->where('id', $shop->id);
-            })->whereHas('products', function ($query) {
-                $query->whereHas('shop', function ($query) {
-                    return $query->isActive();
-                });
-            })->latest('id');
+            ->where('show_in_hero', 1)
+            ->select('categories.*')
+            ->selectSub(function ($q) {
+                $q->from('inward_products')
+                    ->join('product_categories', 'inward_products.product_id', '=', 'product_categories.product_id')
+                    ->whereColumn('product_categories.category_id', 'categories.id')
+                    ->selectRaw('count(*)');
+            }, 'inward_products_count')
+            ->selectSub(function ($q) {
+                $q->from('products')
+                    ->join('product_categories', 'products.id', '=', 'product_categories.product_id')
+                    ->whereColumn('product_categories.category_id', 'categories.id')
+                    ->where('products.is_online_product', 1)
+                    ->where('products.is_active', 1)
+                    ->selectRaw('count(*)');
+            }, 'online_products_count')
+            ->latest('id');
 
         $total = $categories->count();
 

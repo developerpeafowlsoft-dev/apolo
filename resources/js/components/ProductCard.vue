@@ -533,7 +533,13 @@ const openVariantModal = async (buyNow = false) => {
         // carts.mrp = final selling price
         mrp: sellingPrice,
 
-        discount: parseFloat(inwardData?.discount_price || 0),
+        discount: parseFloat(
+            inwardData?.discount_percent ||
+            inwardData?.discount_percentage ||
+            props.product.discount_percentage ||
+            props.product.online_discount_percent ||
+            (price > 0 && sellingPrice < price ? Math.round(((price - sellingPrice) / price) * 100 * 100) / 100 : 0)
+        ),
         inward_invoice_id:
             inwardData?.inward_invoice_id ||
             data.inward_invoice_id ||
@@ -641,18 +647,21 @@ const updateSelectedVariant = () => {
 };
 
 const applyVariantData = variant => {
-  const sellingPrice = parseFloat(variant.mrp || 0);
-  const discount = parseFloat(variant.discount_percent || 0);
+  const physicalMrp = parseFloat(variant.mrp || 0);
+  const discountPercent = parseFloat(variant.discount_percent || 0);
 
-  let originalPrice = sellingPrice;
-
-  if (discount > 0 && discount < 100) {
-    originalPrice = sellingPrice / (1 - discount / 100);
+  let sellingPrice = parseFloat(variant.price || 0);
+  if (!sellingPrice || sellingPrice <= 0) {
+    if (discountPercent > 0 && discountPercent < 100) {
+      sellingPrice = physicalMrp - (physicalMrp * discountPercent / 100);
+    } else {
+      sellingPrice = physicalMrp;
+    }
   }
 
   selectedSellingPrice.value = Number(sellingPrice.toFixed(2));
-  selectedOriginalPrice.value = Number(originalPrice.toFixed(2));
-  selectedDiscount.value = discount;
+  selectedOriginalPrice.value = Number(physicalMrp.toFixed(2));
+  selectedDiscount.value = discountPercent;
   selectedQty.value = parseInt(variant.qty || 0);
 
   selectedInwardInvoiceId.value =

@@ -22,40 +22,6 @@ class POSHistoryService
     }
 
     /**
-     * Resolve matching counter IDs for a given counter ID (mapping across historical/synced counters).
-     */
-    public static function resolveMatchingCounterIds($counterId): array
-    {
-        if (empty($counterId)) {
-            return [];
-        }
-
-        $selectedCounter = \App\Models\CounterMaster::find($counterId);
-        if (!$selectedCounter) {
-            return [(int)$counterId];
-        }
-
-        $code = $selectedCounter->code;
-        $nameNorm = preg_replace('/[^a-z0-9]/', '', strtolower($selectedCounter->counter_name));
-        $shortNorm = preg_replace('/[^a-z0-9]/', '', strtolower($selectedCounter->counter_short_name));
-
-        $matchingIds = \App\Models\CounterMaster::all()->filter(function ($item) use ($selectedCounter, $code, $nameNorm, $shortNorm) {
-            $iName = preg_replace('/[^a-z0-9]/', '', strtolower($item->counter_name));
-            $iShort = preg_replace('/[^a-z0-9]/', '', strtolower($item->counter_short_name));
-            return $item->id == $selectedCounter->id
-                || (!empty($code) && $item->code === $code)
-                || (!empty($nameNorm) && ($iName === $nameNorm || $iShort === $nameNorm))
-                || (!empty($shortNorm) && ($iName === $shortNorm || $iShort === $shortNorm));
-        })->pluck('id')->toArray();
-
-        if (empty($matchingIds)) {
-            $matchingIds = [(int)$selectedCounter->id];
-        }
-
-        return array_values(array_unique($matchingIds));
-    }
-
-    /**
      * Fetch list of previous billing history invoices with server-side filters and optimization.
      */
     public function getHistory(array $filters, $shopId, $perPage = 15)
@@ -69,10 +35,7 @@ class POSHistoryService
 
         // Apply filters
         if (!empty($filters['counter_id'])) {
-            $matchingCounterIds = self::resolveMatchingCounterIds($filters['counter_id']);
-            if (!empty($matchingCounterIds)) {
-                $query->whereIn('counter_id', $matchingCounterIds);
-            }
+            $query->where('counter_id', $filters['counter_id']);
         }
 
         // Unified Search Filter
@@ -209,15 +172,12 @@ class POSHistoryService
         $returnsCountQuery = POSReturn::where('shop_id', $shopId)
             ->whereDate('created_at', $today);
 
-        if (!empty($counterId)) {
-            $matchingCounterIds = self::resolveMatchingCounterIds($counterId);
-            if (!empty($matchingCounterIds)) {
-                $salesTodayQuery->whereIn('counter_id', $matchingCounterIds);
-                $billsTodayQuery->whereIn('counter_id', $matchingCounterIds);
-                $holdsActiveQuery->whereIn('counter_id', $matchingCounterIds);
-                $voidedBillsQuery->whereIn('counter_id', $matchingCounterIds);
-                $returnsCountQuery->whereIn('counter_id', $matchingCounterIds);
-            }
+        if ($counterId) {
+            $salesTodayQuery->where('counter_id', $counterId);
+            $billsTodayQuery->where('counter_id', $counterId);
+            $holdsActiveQuery->where('counter_id', $counterId);
+            $voidedBillsQuery->where('counter_id', $counterId);
+            $returnsCountQuery->where('counter_id', $counterId);
         }
 
         $salesToday = $salesTodayQuery->sum('payable_amount');
@@ -344,7 +304,9 @@ class POSHistoryService
             $date = now();
             $fy = \App\Models\FinancialYear::where('start_date', '<=', $date)
                 ->where('end_date', '>=', $date)
-                ->where('is_active', 1)
+                // Which year a transaction BELONGS to is decided by its date alone.
+                // Filtering on is_active here sent every backdated entry to the
+                // fallback year once only the current year was left active.
                 ->first();
 
             if ($fy) {

@@ -4,12 +4,31 @@
     <div class="d-flex align-items-center flex-wrap gap-3 justify-content-between px-3">
         <h4>
             {{__('HSN Master')}}
+            @if(isset($search) && $search)
+                <span class="badge bg-primary fs-6 ms-2">{{ __('Found') }}: {{ $hsnMasters->total() }}</span>
+            @endif
         </h4>
-        <div>
-            <a href="{{route('shop.hsnMaster.create')}}" class="btn py-2 btn-primary">
-                <i class="bi bi-patch-plus"></i>
-                {{ __('Create New') }}
-            </a>
+
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <form action="{{ route('shop.hsnMaster.index') }}" method="GET" class="d-flex align-items-center">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fa fa-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="{{ __('Search HSN Code or Description...') }}" value="{{ request('search') }}" style="min-width: 250px;">
+                    @if(request('search'))
+                        <a href="{{ route('shop.hsnMaster.index') }}" class="btn btn-outline-secondary border-start-0" title="{{ __('Clear Search') }}">
+                            <i class="fa fa-times text-danger"></i>
+                        </a>
+                    @endif
+                    <button type="submit" class="btn btn-primary">{{ __('Search') }}</button>
+                </div>
+            </form>
+
+            <div>
+                <a href="{{route('shop.hsnMaster.create')}}" class="btn py-2 btn-primary text-nowrap">
+                    <i class="bi bi-patch-plus"></i>
+                    {{ __('Create New') }}
+                </a>
+            </div>
         </div>
     </div>
 
@@ -91,7 +110,7 @@
                         </table>
                     </div>
                     <div class="my-3">
-                        {{ $hsnMasters->links() }}
+                        {{ $hsnMasters->withQueryString()->links() }}
                     </div>
                 </div>
             </div>

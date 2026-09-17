@@ -15,48 +15,25 @@ class SubCategoryRequest extends FormRequest
     }
 
     /**
-     * Prepare the data for validation.
-     */
-    protected function prepareForValidation(): void
-    {
-        if ($this->has('name')) {
-            $this->merge([
-                'name' => trim((string) $this->name),
-            ]);
-        }
-    }
-
-    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        $required = ($this->isMethod('put')) ? 'nullable' : 'required';
-        $subCategoryId = $this->route('subCategory')?->id ?? $this->route('subcategory')?->id ?? $this->id;
+        $isUpdate = $this->isMethod('put') 
+            || $this->isMethod('patch') 
+            || strtolower($this->input('_method', '')) === 'put' 
+            || $this->routeIs('*subcategory.update*') 
+            || $this->route('subCategory') !== null 
+            || $this->route('subcategory') !== null;
+
+        $required = $isUpdate ? 'nullable' : 'required';
 
         return [
             'category' => ['required', 'array', 'exists:categories,id'],
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                function ($attribute, $value, $fail) use ($subCategoryId) {
-                    $trimmed = trim($value);
-                    if ($trimmed === '') return;
-
-                    $exists = \App\Models\SubCategory::whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($trimmed)])
-                        ->when($subCategoryId, function ($q) use ($subCategoryId) {
-                            $q->where('id', '!=', $subCategoryId);
-                        })
-                        ->exists();
-
-                    if ($exists) {
-                        $fail(__('Subcategory already exists.'));
-                    }
-                },
-            ],
+            'name' => ['required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
             'thumbnail' => [$required, 'image', 'mimes:jpg,jpeg,png,gif', 'max:2048'],
         ];
     }
@@ -74,10 +51,10 @@ class SubCategoryRequest extends FormRequest
             'category.required' => __('The category field is required.'),
             'category.exists' => __('The selected category is invalid.'),
             'name.required' => __('The name field is required.'),
-            'thumbnail.required' => __('Sub category image is required.'),
             'thumbnail.image' => __('The thumbnail must be an image.'),
             'thumbnail.mimes' => __('The thumbnail must be a file of type: jpg, jpeg, png, gif.'),
-            'thumbnail.max' => __('The thumbnail must not be greater than 2048 kilobytes.'),
+            'thumbnail.max' => __('The thumbnail must not be greater than 2 kilobytes.'),
+            'thumbnail.required' => __('The thumbnail field is required.'),
         ];
     }
 }

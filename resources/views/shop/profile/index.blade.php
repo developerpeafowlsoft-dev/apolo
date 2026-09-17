@@ -78,6 +78,16 @@
                             <td>{{ $shop->name }}</td>
                         </tr>
                         <tr>
+                            <td style="width: 180px">{{ __('Address') }}:</td>
+                            <td>{{ $shop->address ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td style="width: 180px">{{ __('City / State / Country') }}:</td>
+                            <td>
+                                {{ $shop->city?->name ?? '' }}{{ $shop->city && $shop->state ? ', ' : '' }}{{ $shop->state?->name ?? '' }}{{ ($shop->city || $shop->state) && $shop->country ? ', ' : '' }}{{ $shop->country?->name ?? '-' }}
+                            </td>
+                        </tr>
+                        <tr>
                             <td style="width: 180px">{{ __('Estimated Delivery') }}:</td>
                             <td>{{ $shop->estimated_delivery_time }}</td>
                         </tr>

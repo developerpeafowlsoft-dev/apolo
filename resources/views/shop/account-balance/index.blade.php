@@ -40,6 +40,29 @@
     </form>
 
     <div class="card mt-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h5 class="mb-0 fw-bold">
+                {{ __('Account Opening Balances') }}
+                @if(isset($search) && $search)
+                    <span class="badge bg-primary fs-6 ms-2">{{ __('Found') }}: {{ $accountBalances->total() }}</span>
+                @else
+                    <span class="badge bg-secondary fs-6 ms-2">{{ __('Total') }}: {{ $accountBalances->total() }}</span>
+                @endif
+            </h5>
+
+            <form action="{{ route('shop.accountBalance.index') }}" method="GET" class="d-flex align-items-center">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fa fa-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="{{ __('Search Account / Code...') }}" value="{{ request('search') }}" style="min-width: 250px;">
+                    @if(request('search'))
+                        <a href="{{ route('shop.accountBalance.index') }}" class="btn btn-outline-secondary border-start-0" title="{{ __('Clear Search') }}">
+                            <i class="fa fa-times text-danger"></i>
+                        </a>
+                    @endif
+                    <button type="submit" class="btn btn-primary">{{ __('Search') }}</button>
+                </div>
+            </form>
+        </div>
         <div class="card-body">
             <div class="row">
                 <div class="col-12">
@@ -66,8 +89,9 @@
                                     <td>{{ $accountBalance->financialYear?->name ?? '' }}</td>
                                     <td>{{ $accountBalance->opening_balance ?? '' }}</td>
                                     <td>{{ $accountBalance->closing_balance ?? '' }}</td>
-                                    <td>{{ $accountBalance->created_at->format('d-m-Y') ?? '' }}</td>
+                                    <td>{{ $accountBalance->created_at?->format('d-m-Y') ?? '' }}</td>
                                 </tr>
+
                             @empty
                                 <tr>
                                     <td class="text-center" colspan="100%">{{ __('No Data Found') }}</td>
@@ -77,7 +101,7 @@
                         </table>
                     </div>
                     <div class="my-3">
-                        {{ $accountBalances->links() }}
+                        {{ $accountBalances->withQueryString()->links() }}
                     </div>
                 </div>
             </div>

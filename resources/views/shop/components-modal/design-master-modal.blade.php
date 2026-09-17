@@ -118,9 +118,26 @@
     #design-master-modal .btn-reset:hover {
         background-color: #f1f5f9 !important;
     }
+    .select2-container--open {
+        z-index: 99999999 !important;
+    }
+    .select2-dropdown {
+        z-index: 99999999 !important;
+    }
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 4px !important;
+        padding: 6px 10px !important;
+        outline: none !important;
+        font-size: 13px !important;
+    }
+    .select2-container--default .select2-search--dropdown .select2-search__field:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+    }
 </style>
 
-<div class="modal fade" tabindex="-1" id="design-master-modal">
+<div class="modal fade" id="design-master-modal">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <form id="formDataDesignMaster" method="POST" enctype="multipart/form-data">

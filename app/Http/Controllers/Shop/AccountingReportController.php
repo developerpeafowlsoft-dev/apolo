@@ -18,6 +18,7 @@ use App\Services\Accounting\PurchaseReturnService;
 use App\Services\Accounting\SupplierPaymentService;
 use App\Services\Accounting\CodSettlementService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class AccountingReportController extends Controller
 {
@@ -206,7 +207,27 @@ class AccountingReportController extends Controller
         $shop = generaleSetting('shop');
         $valuationData = $this->valuationService->calculateShopInventoryValuation($shop->id);
 
-        return view('shop.reports.inventory_valuation', compact('valuationData'));
+        // The breakdown is one row per physical SKU - 4,132 of them here, which
+        // rendered a 4.4 MB page. Totals still come from $valuationData, so
+        // paginating the rows leaves every headline figure intact.
+        $search = trim((string)$request->input('search'));
+        $rows = collect($valuationData['products'] ?? []);
+
+        if ($search !== '') {
+            $rows = $rows->filter(fn ($r) => stripos((string)($r['name'] ?? ''), $search) !== false)->values();
+        }
+
+        $perPage = 50;
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $products = new LengthAwarePaginator(
+            $rows->forPage($page, $perPage)->values(),
+            $rows->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('shop.reports.inventory_valuation', compact('valuationData', 'products', 'search'));
     }
 
     /**

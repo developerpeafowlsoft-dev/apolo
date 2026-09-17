@@ -199,12 +199,18 @@ const switchTheme = () => {
     }
 };
 
-document.getElementById("searchBtn").addEventListener("click", function () {
-    $(this).hide();
-    const searchBox = $('.searchingBox');
-    searchBox.addClass('visible');
-    document.getElementById("searchInput").focus();
-});
+const searchBtnElem = document.getElementById("searchBtn");
+if (searchBtnElem) {
+    searchBtnElem.addEventListener("click", function () {
+        $(this).hide();
+        const searchBox = $('.searchingBox');
+        searchBox.addClass('visible');
+        const searchInput = document.getElementById("searchInput");
+        if (searchInput) {
+            searchInput.focus();
+        }
+    });
+}
 
 // search menu bar
 $('#searchInput').on('input', function () {

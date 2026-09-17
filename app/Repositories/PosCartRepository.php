@@ -125,7 +125,8 @@ class PosCartRepository extends Repository
         $discount = 0;
 
         foreach ($posCart->products as $product) {
-            $productPrice = $product->discount_price > 0 ? $product->discount_price : $product->price;
+            // Physical in-store POS billing strictly uses physical MRP (bypasses online discounts)
+            $productPrice = (!empty($product->mrp) && $product->mrp > 0) ? (float)$product->mrp : (float)$product->price;
 
             $mainProduct = Product::find($product->id);
 
@@ -306,7 +307,9 @@ class PosCartRepository extends Repository
             $date = now();
             $financialYear = \App\Models\FinancialYear::where('start_date', '<=', $date)
                 ->where('end_date', '>=', $date)
-                ->where('is_active', 1)
+                // Which year a transaction BELONGS to is decided by its date alone.
+                // Filtering on is_active here sent every backdated entry to the
+                // fallback year once only the current year was left active.
                 ->first();
 
             // Retrieve account IDs with fallbacks

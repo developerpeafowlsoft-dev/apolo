@@ -27,11 +27,25 @@ class SizeRepository extends Repository
      * */
     public static function storeByRequest(SizeRequest $request): Size
     {
-        $shop = generaleSetting('rootShop');
+        $shopId = $request->shop_id;
+
+        if (! $shopId) {
+            $user = auth()->user();
+            if ($user && ! $user->hasRole('root')) {
+                $shopId = $user->shop?->id ?? $user->myShop?->id;
+            }
+        }
+
+        if (! $shopId) {
+            $shopId = Size::whereNotNull('shop_id')->where('shop_id', '!=', 1)->value('shop_id')
+                ?? Size::whereNotNull('shop_id')->value('shop_id')
+                ?? generaleSetting('rootShop')?->id;
+        }
 
         $size = self::create([
             'name' => $request->name,
-            'shop_id' => $shop->id,
+            'shop_id' => $shopId,
+            'created_by' => auth()->id() ?? 1,
             'is_active' => true,
         ]);
 
