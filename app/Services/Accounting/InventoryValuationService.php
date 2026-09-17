@@ -18,27 +18,62 @@ class InventoryValuationService
      */
     public function getWeightedAverageCost(int $productId): float
     {
-        $inwards = InwardProduct::where('product_id', $productId)->get();
+        return $this->getWeightedAverageCostMap([$productId])[$productId] ?? 0.00;
+    }
 
-        if ($inwards->isEmpty()) {
-            $product = Product::find($productId);
-            return (float)($product->unit_price ?? $product->price ?? 0.00);
+    /**
+     * Weighted average cost for many products in two queries.
+     *
+     * Calling getWeightedAverageCost() inside a loop issued one query per product
+     * (two when the product had no inwards). On a 4,000-SKU shop that was tens of
+     * thousands of round trips; this collapses it to a pair.
+     *
+     * @param  int[]  $productIds
+     * @return array<int,float>  product id => weighted average unit cost
+     */
+    public function getWeightedAverageCostMap(array $productIds): array
+    {
+        $productIds = array_values(array_unique(array_filter(array_map('intval', $productIds))));
+        if (empty($productIds)) {
+            return [];
         }
 
-        $totalCost = 0.00;
-        $totalQty = 0;
+        $totals = [];   // product_id => ['cost' => float, 'qty' => int]
 
-        foreach ($inwards as $inward) {
-            $qty = (int)($inward->quantity ?? $inward->stock ?? 1);
-            $rate = (float)($inward->buy_price ?? $inward->purchase_rate ?? $inward->price ?? 0.00);
-            if ($rate <= 0 && (float)$inward->net_purc_rate > 0 && $qty > 0) {
-                $rate = round((float)$inward->net_purc_rate / $qty, 2);
+        InwardProduct::whereIn('product_id', $productIds)
+            ->select('product_id', 'quantity', 'buy_price', 'price', 'net_purc_rate')
+            ->chunk(5000, function ($chunk) use (&$totals) {
+                foreach ($chunk as $inward) {
+                    $pid = (int)$inward->product_id;
+                    $qty = (int)($inward->quantity ?? 1);
+                    $rate = (float)($inward->buy_price ?? $inward->price ?? 0.00);
+
+                    if ($rate <= 0 && (float)$inward->net_purc_rate > 0 && $qty > 0) {
+                        $rate = round((float)$inward->net_purc_rate / $qty, 2);
+                    }
+
+                    $totals[$pid]['cost'] = ($totals[$pid]['cost'] ?? 0.00) + ($qty * $rate);
+                    $totals[$pid]['qty'] = ($totals[$pid]['qty'] ?? 0) + $qty;
+                }
+            });
+
+        $map = [];
+        foreach ($totals as $pid => $t) {
+            $map[$pid] = $t['qty'] > 0 ? round($t['cost'] / $t['qty'], 2) : 0.00;
+        }
+
+        // Products with no inward history fall back to their catalogue price.
+        $missing = array_diff($productIds, array_keys($totals));
+        if (!empty($missing)) {
+            foreach (Product::whereIn('id', $missing)->select('id', 'price')->get() as $prod) {
+                $map[(int)$prod->id] = (float)($prod->price ?? 0.00);
             }
-            $totalCost += ($qty * $rate);
-            $totalQty += $qty;
+            foreach ($missing as $pid) {
+                $map[$pid] = $map[$pid] ?? 0.00;
+            }
         }
 
-        return $totalQty > 0 ? round($totalCost / $totalQty, 2) : 0.00;
+        return $map;
     }
 
     /**
@@ -48,8 +83,15 @@ class InventoryValuationService
      * @param int $shopId
      * @return array Summary of total stock quantity, total weighted asset value, and product breakdown
      */
+    /** Per-request memo: the dashboard and each statement ask for this more than once. */
+    protected static array $valuationMemo = [];
+
     public function calculateShopInventoryValuation(int $shopId): array
     {
+        if (isset(self::$valuationMemo[$shopId])) {
+            return self::$valuationMemo[$shopId];
+        }
+
         $canonicalService = app(CanonicalInventoryService::class);
         $summary = $canonicalService->getShopPhysicalSkuSummary($shopId);
 
@@ -71,7 +113,7 @@ class InventoryValuationService
             ];
         }
 
-        return [
+        return self::$valuationMemo[$shopId] = [
             'total_stock_quantity' => $summary['totals']['total_available_qty'],
             'total_accounting_owned_quantity' => $summary['totals']['total_accounting_owned_qty'],
             'total_reserved_quantity' => $summary['totals']['total_reserved_qty'],

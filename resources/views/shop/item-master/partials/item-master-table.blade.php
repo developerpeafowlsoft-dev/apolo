@@ -3,6 +3,7 @@
         <thead>
         <tr>
             <th class="text-center">{{ __('SL') }}</th>
+            <th>{{ __('Item No / ID') }}</th>
             <th>{{ __('Item Name') }}</th>
             <th>{{ __('HSN Code') }}</th>
             <th>{{ __('Tax Type') }}</th>
@@ -27,13 +28,16 @@
             <tr>
                 <td class="text-center">{{ $serial }}</td>
                 <td>
-                    <div>{{ $itemMaster->name ?? '' }}</div>
-                    @if(!empty($itemMaster->item_short_name))
-                        <div class="text-muted small fw-semibold">{{ $itemMaster->item_short_name }}</div>
-                    @endif
+                    <span class="badge bg-light-primary text-primary fw-bold font-monospace fs-6">
+                        {{ $itemMaster->code ?: $itemMaster->id }}
+                    </span>
+                </td>
+                <td>
+                    {{ $itemMaster->name ?? '' }}
                     <div class="text-muted">
                         <span class="badge badge-dark rounded-start-5">{{ $itemMaster->categories->pluck('name')->join(', ') }}</span>
                         <span class="badge badge-info rounded-end-pill"> {{ $itemMaster->brand->name ?? '' }}</span>
+
                     </div>
                 </td>
                 <td>{{ $itemMaster->hsnMaster->hsn_code ?? '-' }}</td>

@@ -753,12 +753,44 @@ class CartRepository extends Repository
 
         $customer = auth()->user()->customer;
 
-        // ✅ Get variant prices from request
+        // ✅ Get variant prices from request or inward product
         $variantPrice = $request->price ?? 0;
         $variantMrp = $request->mrp ?? $product->mrp ?? $product->price ?? 0;
         $variantDiscount = $request->discount ?? 0;
         $inwardInvoiceId = $request->inward_invoice_id ?? null;
         $inwardProductId = $request->inward_product_id ?? null;
+
+        if ($inwardProductId) {
+            $inwardProd = \App\Models\InwardProduct::find($inwardProductId);
+            if ($inwardProd) {
+                $vDisc = (float) (($inwardProd->online_discount_percent !== null && $inwardProd->online_discount_percent > 0)
+                    ? $inwardProd->online_discount_percent
+                    : ($product->online_discount_percent ?? 0));
+                $vMrp = (float) ($inwardProd->mrp > 0 ? $inwardProd->mrp : ($product->mrp ?? $product->price));
+                $vSellingPrice = ($vDisc > 0)
+                    ? round($vMrp - ($vMrp * $vDisc / 100), 2)
+                    : $vMrp;
+
+                $variantPrice = $vMrp;
+                $variantMrp = $vSellingPrice;
+                $variantDiscount = $vDisc;
+            }
+        }
+
+        // ✅ If discount is out of valid percentage range (e.g. price was sent instead of percentage),
+        // resolve the correct discount percentage from product or calculate it:
+        if ($variantDiscount > 100 || $variantDiscount < 0) {
+            if ((float)($product->online_discount_percent ?? 0) > 0) {
+                $variantDiscount = (float) $product->online_discount_percent;
+            } elseif ($variantPrice > 0 && $variantMrp < $variantPrice) {
+                $variantDiscount = round((($variantPrice - $variantMrp) / $variantPrice) * 100, 2);
+            } elseif ($product->price > 0 && $product->discount_price > 0 && $product->discount_price < $product->price) {
+                $variantDiscount = round((($product->price - $product->discount_price) / $product->price) * 100, 2);
+            } else {
+                $variantDiscount = 0;
+            }
+        }
+        $variantDiscount = min(100, max(0, (float) $variantDiscount));
 
         // ✅ Find cart by product_id AND color AND size (unique variant)
         $cart = $customer->carts()
@@ -822,7 +854,23 @@ class CartRepository extends Repository
             $flashSaleProduct = null;
             $quantity = null;
 
-            $price = $product->discount_price > 0 ? $product->discount_price : $product->price;
+            $price = 0;
+            if ($cart->inward_product_id) {
+                $inwardProd = \App\Models\InwardProduct::find($cart->inward_product_id);
+                if ($inwardProd) {
+                    $vDisc = (float) (($inwardProd->online_discount_percent !== null && $inwardProd->online_discount_percent > 0)
+                        ? $inwardProd->online_discount_percent
+                        : ($product->online_discount_percent ?? 0));
+                    $vMrp = (float) ($inwardProd->mrp > 0 ? $inwardProd->mrp : ($product->mrp ?? $product->price));
+                    $price = ($vDisc > 0) ? round($vMrp - ($vMrp * $vDisc / 100), 2) : $vMrp;
+                }
+            }
+            if ($price <= 0 && !empty($cart->mrp) && (float)$cart->mrp > 0) {
+                $price = (float) $cart->mrp;
+            }
+            if ($price <= 0) {
+                $price = $product->discount_price > 0 ? $product->discount_price : $product->price;
+            }
 
             if ($flashSale) {
                 $flashSaleProduct = $flashSale?->products()->where('id', $product->id)->first();

@@ -18,11 +18,41 @@ class Unit extends Model
     }
 
     /**
-     * Get the shop that owns the unit.
+     * Get the shop from the unit.
      */
     public function shop()
     {
         return $this->belongsTo(Shop::class);
+    }
+
+    /**
+     * Get the user who created the unit.
+     */
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Check if this unit is owned and editable/deletable by a shop.
+     */
+    public function isOwnedByShop(?int $shopId): bool
+    {
+        if (!$shopId || (int) $this->shop_id !== (int) $shopId) {
+            return false;
+        }
+
+        // Units created by Super Admin (user 1 or root role) or system migrated (no creator) are protected
+        if (empty($this->created_by) || (int) $this->created_by === 1) {
+            return false;
+        }
+
+        $creator = $this->creator;
+        if ($creator && $creator->hasRole('root')) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

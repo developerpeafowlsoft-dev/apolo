@@ -10,21 +10,26 @@ use Illuminate\Http\Request;
 
 class MaterialController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $rootShop = generaleSetting('rootShop');
+        $search = $request->search ?? null;
 
-        // Get all materials (Super Admin created + Shop created)
-        $materials = Material::with('shop')->orderByDesc('id')->paginate(20)->withQueryString();
+        // Get Materials
+        $materials = Material::when($search, function ($query) use ($search) {
+                return $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%')
+                      ->orWhere('code', 'like', '%' . $search . '%');
+                });
+            })
+            ->latest('id')
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('admin.material.index', compact('materials', 'rootShop'));
+        return view('admin.material.index', compact('materials', 'search'));
     }
 
     public function store(MaterialRequest $request)
     {
-        $shop = generaleSetting('shop');
-        $request->merge(['shop_id' => $shop->id]);
-
         MaterialRepository::materialrCreate($request);
 
         return to_route('admin.material.index')->withSuccess(__('Material created successfully'));
@@ -44,5 +49,20 @@ class MaterialController extends Controller
         ]);
 
         return to_route('admin.material.index')->withSuccess(__('Material status updated'));
+    }
+
+    /**
+     * delete a material (Super Admin can delete any material)
+     */
+    public function destroy(Material $material)
+    {
+        $user = auth()->user();
+        if (! $user || (! $user->hasRole('root') && ! $user->can('admin.material.destroy'))) {
+            abort(403, __('Unauthorized action. Only Super Admin can delete materials here.'));
+        }
+
+        $material->delete();
+
+        return to_route('admin.material.index')->withSuccess(__('Material deleted successfully'));
     }
 }

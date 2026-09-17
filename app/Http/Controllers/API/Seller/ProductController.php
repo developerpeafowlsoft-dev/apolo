@@ -79,7 +79,7 @@ class ProductController extends Controller
 
         $brands = $shop?->brands()->isActive()->get();
         $colors = $shop?->colors()->isActive()->get();
-        $categories = $shop?->categories()->active()->get();
+        $categories = $shop?->categories()->active()->inHero()->get();
         $units = $shop?->units()->isActive()->get();
         $sizes = $shop?->sizes()->isActive()->get();
 

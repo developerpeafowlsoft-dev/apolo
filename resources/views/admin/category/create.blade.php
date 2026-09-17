@@ -37,7 +37,19 @@
                             <label for="description" class="form-label">
                                 {{__('Description')}}
                             </label>
-                            <textarea name="description" class="form-control" rows="3" placeholder="Enter description"></textarea>
+                            <textarea name="description" class="form-control" rows="3" placeholder="Enter description">{{ old('description') }}</textarea>
+                        </div>
+
+                        <div class="mt-4 d-flex align-items-center justify-content-between p-3 border rounded bg-light">
+                            <label for="show_in_hero" class="mb-0" style="cursor: pointer;">
+                                <h6 class="mb-0 fw-bold">{{ __('Show in Hero Section') }}</h6>
+                                <small class="text-muted">{{ __('Toggle ON to display this category on the homepage hero section') }}</small>
+                            </label>
+                            <label class="switch mb-0" for="show_in_hero">
+                                <input type="hidden" name="show_in_hero" value="0">
+                                <input type="checkbox" name="show_in_hero" id="show_in_hero" value="1" {{ old('show_in_hero') ? 'checked' : '' }}>
+                                <span class="slider round"></span>
+                            </label>
                         </div>
 
 

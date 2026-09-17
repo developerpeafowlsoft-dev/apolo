@@ -7,22 +7,49 @@ use App\Http\Requests\SubCategoryRequest;
 use App\Models\SubCategory;
 use App\Repositories\SubCategoryRepository;
 
+use Illuminate\Http\Request;
+
 class SubCategoryController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $rootShop = generaleSetting('rootShop');
+        $shop = generaleSetting('shop');
 
-        // Get all subcategories (Super Admin created + Shop created) with shop, categories, and pagination
-        $subCategories = SubCategory::with(['shop', 'categories'])
-            ->latest('id')
-            ->paginate(20)
+        $query = ($shop && $shop->subCategories()->exists()) ? $shop->subCategories() : SubCategory::query();
+
+        $subCategories = $query
+            ->with(['creator', 'categories'])
+            ->select('sub_categories.*')
+            ->selectSub(function ($q) {
+                $q->from('inward_products')
+                    ->join('product_subcategories', 'inward_products.product_id', '=', 'product_subcategories.product_id')
+                    ->whereColumn('product_subcategories.sub_category_id', 'sub_categories.id')
+                    ->selectRaw('count(*)');
+            }, 'inward_products_count')
+            ->selectSub(function ($q) {
+                $q->from('products')
+                    ->join('product_subcategories', 'products.id', '=', 'product_subcategories.product_id')
+                    ->whereColumn('product_subcategories.sub_category_id', 'sub_categories.id')
+                    ->where('products.is_online_product', 1)
+                    ->where('products.is_active', 1)
+                    ->selectRaw('count(*)');
+            }, 'online_products_count')
+            ->when($request->search, function ($q, $search) {
+                $q->where(function ($subQ) use ($search) {
+                    $subQ->where('sub_categories.name', 'like', "%{$search}%")
+                        ->orWhereHas('categories', function ($cq) use ($search) {
+                            $cq->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->latest('sub_categories.id')
+            ->paginate(10)
             ->withQueryString();
 
-        return view('admin.sub-category.index', compact('subCategories', 'rootShop'));
+        return view('admin.sub-category.index', compact('subCategories'));
     }
 
     /**
@@ -74,6 +101,10 @@ class SubCategoryController extends Controller
      */
     public function destroy(SubCategory $subCategory)
     {
+        if ($subCategory->products()->exists()) {
+            return back()->with('error', __('Cannot delete sub category because products are associated with it'));
+        }
+
         $subCategory->delete();
 
         return to_route('admin.subcategory.index')->with('success', __('Deleted successfully'));

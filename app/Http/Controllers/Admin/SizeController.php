@@ -7,19 +7,25 @@ use App\Http\Requests\SizeRequest;
 use App\Models\Size;
 use App\Repositories\SizeRepository;
 
+use Illuminate\Http\Request;
+
 class SizeController extends Controller
 {
     /**
      * Display the size list.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $rootShop = generaleSetting('rootShop');
+        $search = $request->search ?? null;
 
-        // Get all sizes (Super Admin created + Shop created)
-        $sizes = Size::with('shop')->orderByDesc('id')->paginate(20)->withQueryString();
+        $sizes = Size::when($search, function ($query) use ($search) {
+                return $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->latest('id')
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('admin.size.index', compact('sizes', 'rootShop'));
+        return view('admin.size.index', compact('sizes', 'search'));
     }
 
     /**
@@ -52,5 +58,21 @@ class SizeController extends Controller
         ]);
 
         return back()->withSuccess(__('Status updated successfully'));
+    }
+
+    /**
+     * delete a size (Super Admin can delete any size)
+     */
+    public function destroy(Size $size)
+    {
+        $user = auth()->user();
+        if (! $user || (! $user->hasRole('root') && ! $user->can('admin.size.destroy'))) {
+            abort(403, __('Unauthorized action. Only Super Admin can delete sizes here.'));
+        }
+
+        $size->translations()->delete();
+        $size->delete();
+
+        return to_route('admin.size.index')->withSuccess(__('Size deleted successfully'));
     }
 }

@@ -3,7 +3,7 @@
         <NavbarTop />
         <Navbar />
 
-        <div class="flex-grow">
+        <div class="flex-grow pb-8 sm:pb-12">
             <slot />
         </div>
 

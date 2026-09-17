@@ -5,7 +5,7 @@
             <h2 class="sr-only">{{ $t('Categories List') }}</h2>
             <div class="flex flex-col justify-between h-full w-full gap-2">
                 <router-link 
-                    v-for="category in master.categories?.slice(0, 8)" 
+                    v-for="category in heroCategories" 
                     :key="category.id" 
                     :to="`/categories/${category.id}`"
                     class="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-slate-100/80 hover:bg-slate-200/80 transition-all duration-200 group text-slate-800"
@@ -79,12 +79,18 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { Swiper, SwiperSlide } from 'swiper/vue';
 import { Navigation, Pagination, A11y, Autoplay } from 'swiper/modules';
 import { useMaster } from '../stores/MasterStore';
 import SkeletonLoader from './SkeletonLoader.vue';
 
 const master = useMaster();
+
+const heroCategories = computed(() => {
+    const list = master.categories || [];
+    return list.filter(c => Boolean(c.show_in_hero)).slice(0, 8);
+});
 
 // Import Swiper styles
 import 'swiper/css';

@@ -362,7 +362,6 @@
                             '<th class="text-center py-2.5">Size</th>' +
                             '<th class="text-center py-2.5">Qty</th>' +
                             '<th class="text-end py-2.5">Purc Rate</th>' +
-                            '<th class="text-center py-2.5">Disc</th>' +
                             '<th class="text-end py-2.5">MRP</th>' +
                         '</tr>' +
                     '</thead><tbody>';
@@ -381,10 +380,6 @@
                         ? `<span class="fw-semibold font-monospace text-dark">${iv.size}</span>`
                         : `<span class="text-muted small">N/A</span>`;
 
-                    const discText = iv.disc > 0
-                        ? `<span class="badge bg-danger-subtle text-danger border-0 px-2 py-0.5 rounded-pill fw-bold" style="font-size: 10.5px;">${iv.disc}%</span>`
-                        : `<span class="text-muted small">0%</span>`;
-
                     const purcRateText = parseFloat(iv.purc_rate || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                     const mrpText = parseFloat(iv.mrp || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
@@ -394,7 +389,6 @@
                         <td class="text-center">${sizeText}</td>
                         <td class="text-center font-monospace fw-bold text-dark">${iv.qty}</td>
                         <td class="text-end font-monospace text-primary fw-semibold">₹${purcRateText}</td>
-                        <td class="text-center">${discText}</td>
                         <td class="text-end font-monospace text-success fw-bold">₹${mrpText}</td>
                     </tr>`;
                 });
@@ -405,7 +399,6 @@
                     <td colspan="3" class="text-end pe-2 text-dark">Total:</td>
                     <td class="text-center font-monospace text-dark fs-6">${totalQty}</td>
                     <td class="text-end font-monospace text-muted">—</td>
-                    <td></td>
                     <td class="text-end font-monospace text-success fs-6">₹${totalMrpText}</td>
                 </tr>`;
 

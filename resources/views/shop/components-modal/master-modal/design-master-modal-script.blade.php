@@ -45,6 +45,20 @@
                 // });
 
 
+                // Pre-fill Account Master if Inward Party context is available and creating new Design Master
+                if (typeof window.getInwardPartyContext === 'function' && !$('#design_id').val()) {
+                    const inwardParty = window.getInwardPartyContext();
+                    if (inwardParty && inwardParty.id) {
+                        const optionText = (inwardParty.code && inwardParty.code !== inwardParty.name)
+                            ? `${inwardParty.code} - ${inwardParty.name}`
+                            : inwardParty.name;
+                        const newOption = new Option(optionText, inwardParty.id, true, true);
+                        $(newOption).data('accName', inwardParty.name);
+                        $("#account_master").append(newOption);
+                        $("#account_master_name").val(inwardParty.name);
+                    }
+                }
+
                 $("#design-master-modal").modal("show");
                 HoldOn.close();
 
@@ -205,6 +219,24 @@
             },
             minimumInputLength: 0
         });
+
+        // Ensure Inward Party pre-fill is reflected in Select2 when modal is shown
+        if (typeof window.getInwardPartyContext === 'function' && !$('#design_id').val()) {
+            const inwardParty = window.getInwardPartyContext();
+            if (inwardParty && inwardParty.id) {
+                const optionText = (inwardParty.code && inwardParty.code !== inwardParty.name)
+                    ? `${inwardParty.code} - ${inwardParty.name}`
+                    : inwardParty.name;
+                if ($("#account_master").find("option[value='" + inwardParty.id + "']").length === 0) {
+                    const newOption = new Option(optionText, inwardParty.id, true, true);
+                    $(newOption).data('accName', inwardParty.name);
+                    $("#account_master").append(newOption).trigger('change');
+                } else {
+                    $("#account_master").val(inwardParty.id).trigger('change');
+                }
+                $("#account_master_name").val(inwardParty.name);
+            }
+        }
 
     });
 

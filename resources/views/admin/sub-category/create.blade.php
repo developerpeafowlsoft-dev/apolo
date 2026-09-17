@@ -56,7 +56,7 @@
                         </div>
 
                         <div class="mt-5 d-flex gap-2 justify-content-between">
-                            <a href="{{ route('admin.category.index') }}" class="btn btn-secondary py-2 px-4">
+                            <a href="{{ route('admin.subcategory.index') }}" class="btn btn-secondary py-2 px-4">
                                 {{__('Back')}}
                             </a>
 

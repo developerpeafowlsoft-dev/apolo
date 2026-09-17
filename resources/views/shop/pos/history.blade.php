@@ -385,26 +385,10 @@
         loadHistoryRegister();
     }
 
-    function getSelectedCounterId() {
-        let cid = $('#selected-counter-id').val();
-        if (!cid) {
-            try {
-                const stored = localStorage.getItem('pos_selected_counter');
-                if (stored) {
-                    const c = JSON.parse(stored);
-                    cid = c.id;
-                }
-            } catch(e) {}
-        }
-        return cid || '';
-    }
-
     function loadHistoryStats() {
-        const counterId = getSelectedCounterId();
         $.ajax({
             url: "{{ route('shop.pos.history.stats') }}",
             type: 'GET',
-            data: { counter_id: counterId },
             dataType: 'json',
             success: function(res) {
                 if (res.success) {
@@ -424,7 +408,6 @@
 
     function loadHistoryRegister() {
         const searchVal = $('#filter-search').val().trim();
-        const counterId = getSelectedCounterId();
         const payload = {
             page: currentPage,
             limit: limitPerPage,
@@ -435,8 +418,7 @@
             payment_mode: $('#filter-payment-mode').val(),
             status: $('#filter-status').val(),
             date_from: $('#filter-date-from').val(),
-            date_to: $('#filter-date-to').val(),
-            counter_id: counterId
+            date_to: $('#filter-date-to').val()
         };
 
         $.ajax({
@@ -860,19 +842,15 @@
     }
 
     function exportHistoryCSV() {
-        const counterId = getSelectedCounterId();
-        const queryParams = {
+        const query = $.param({
             invoice_no: $('#filter-search').val().trim(),
             customer: $('#filter-search').val().trim(),
             payment_mode: $('#filter-payment-mode').val(),
             status: $('#filter-status').val(),
             date_from: $('#filter-date-from').val(),
             date_to: $('#filter-date-to').val()
-        };
-        if (counterId) {
-            queryParams.counter_id = counterId;
-        }
-        window.location.href = "{{ route('shop.pos.history.export') }}?" + $.param(queryParams);
+        });
+        window.location.href = "{{ route('shop.pos.history.export') }}?" + query;
     }
 </script>
 @endsection

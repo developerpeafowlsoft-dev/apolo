@@ -1,16 +1,56 @@
+# Environment / secrets
 .env
 .env.*
+!.env.example
+!.env.branch.example
+*.pem
+*.p12
+*.keystore
+*.jks
+key.properties
+apolo.crt
+apolo.key
+
+# PHP / Node dependencies
 /vendor/
 /node_modules/
-*.zip
-__MACOSX
+node_modules/
+
+# Laravel generated files
 /public/storage
+/public/build/
+/public/hot
 /storage/*.key
 /storage/logs/*
 /storage/framework/cache/*
 /storage/framework/sessions/*
+/storage/framework/testing/*
 /storage/framework/views/*
+/bootstrap/cache/*.php
+
+# Local legacy data
+/backup_excel/
+
+# Archives / DB dumps
+*.zip
+*.sql
+*.sql.gz
+*.dump
+__MACOSX
+
+# Flutter / Mobile generated files
+/Mobile/build/
+/Mobile/.dart_tool/
+/Mobile/ios/Pods/
+/Mobile/android/.gradle/
+
+# Testing
+.phpunit.result.cache
+
+# OS / editors
 .DS_Store
-node_modules
-/bootstrap/cache/*.php
-/bootstrap/cache/*.php
+._*
+Thumbs.db
+.vscode/
+.idea/
+*.swp

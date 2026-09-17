@@ -145,24 +145,31 @@ class GSTPostingService
         return DB::transaction(function () use ($order) {
             $placeOfSupply = $this->resolvePlaceOfSupply($order->shop_id, $order->address);
 
-            $taxAmt = (float)($order->total_tax_amount ?? $order->tax_amount ?? 0);
-            $taxableAmt = (float)($order->total_taxable_amount ?? ($order->payable_amount - $taxAmt));
-            $totalPayable = (float)$order->payable_amount;
-            $discountAmt = (float)($order->coupon_discount_amount ?? 0);
+            // payable_amount = total_amount + delivery_charge, and total_amount is
+            // tax-inclusive goods. Deriving the sales leg as (payable - tax) folded
+            // the delivery charge into Sales revenue, overstating turnover and
+            // giving the shipping fee the wrong GST treatment.
+            $totalPayable   = (float)$order->payable_amount;
+            $deliveryCharge = (float)($order->delivery_charge ?? 0);
+            $taxAmt         = (float)($order->tax_amount ?? 0);
+            $productTotal   = (float)($order->total_amount ?? ($totalPayable - $deliveryCharge));
+            $taxableAmt     = max(0, round($productTotal - $taxAmt, 2));
 
             $salesAccount = $this->getOrCreateSystemAccount('POS Showroom Sales A/c', 'SALES_POS', 'Sales Accounts', 'Revenue');
             $cgstOutput = $this->getOrCreateSystemAccount('CGST Output A/c', 'CGST_OUT', 'Duties & Taxes', 'Liability');
             $sgstOutput = $this->getOrCreateSystemAccount('SGST Output A/c', 'SGST_OUT', 'Duties & Taxes', 'Liability');
             $igstOutput = $this->getOrCreateSystemAccount('IGST Output A/c', 'IGST_OUT', 'Duties & Taxes', 'Liability');
+            $deliveryIncome = $this->getOrCreateSystemAccount('Delivery Charges Collected A/c', 'REV_DELIVERY', 'Direct Incomes', 'Revenue');
+            $roundOffAccount = $this->getOrCreateSystemAccount('Round-Off (ROF) A/c', 'EXP_ROF', 'Indirect Expenses', 'Expenses');
 
             // Payment Tender Account
             $paymentMethod = strtolower($order->payment_method->value ?? $order->payment_method ?? 'cash');
             if ($paymentMethod === 'card' || str_contains($paymentMethod, 'card')) {
-                $tenderAccount = $this->getOrCreateSystemAccount('Paytm EDC Card Clearing A/c', 'CARD_PAYTM_CLEARING', 'Bank Accounts', 'Asset');
+                $tenderAccount = $this->getOrCreateSystemAccount('Paytm EDC Card Clearing A/c', 'EDC_CLEARING', 'Bank Accounts', 'Asset');
             } elseif ($paymentMethod === 'upi' || str_contains($paymentMethod, 'upi')) {
-                $tenderAccount = $this->getOrCreateSystemAccount('PhonePe UPI Clearing A/c', 'UPI_PPE_CLEARING', 'Bank Accounts', 'Asset');
+                $tenderAccount = $this->getOrCreateSystemAccount('PhonePe UPI Clearing A/c', 'UPI_CLEARING', 'Bank Accounts', 'Asset');
             } else {
-                $tenderAccount = $this->getOrCreateSystemAccount('Counter Cash Drawer A/c', 'CASH_COUNTER_1', 'Cash-in-Hand', 'Asset');
+                $tenderAccount = $this->getOrCreateSystemAccount('Counter Cash Drawer A/c', 'CASH_DRAWER', 'Cash-in-Hand', 'Asset');
             }
 
             $entries = [];
@@ -175,13 +182,25 @@ class GSTPostingService
                 'description' => "Sales Collection for Order #{$order->order_code}",
             ];
 
-            // CREDIT: Sales Account
-            $entries[] = [
-                'account_id' => $salesAccount->id,
-                'type' => 'Cr',
-                'amount' => $taxableAmt,
-                'description' => "Gross Sales Revenue for Order #{$order->order_code}",
-            ];
+            // CREDIT: Sales Account (goods only, net of tax)
+            if ($taxableAmt > 0) {
+                $entries[] = [
+                    'account_id' => $salesAccount->id,
+                    'type' => 'Cr',
+                    'amount' => $taxableAmt,
+                    'description' => "Sales Revenue for Order #{$order->order_code}",
+                ];
+            }
+
+            // CREDIT: Delivery Charge Income - its own head, not sales revenue
+            if ($deliveryCharge > 0) {
+                $entries[] = [
+                    'account_id' => $deliveryIncome->id,
+                    'type' => 'Cr',
+                    'amount' => $deliveryCharge,
+                    'description' => "Delivery Charge for Order #{$order->order_code}",
+                ];
+            }
 
             // CREDIT: Tax Ledgers
             if ($taxAmt > 0) {
@@ -191,22 +210,48 @@ class GSTPostingService
                         'account_id' => $cgstOutput->id,
                         'type' => 'Cr',
                         'amount' => $halfTax,
-                        'description' => "CGST 9% Output for Order #{$order->order_code}",
+                        'description' => "Output CGST for Order #{$order->order_code}",
                     ];
                     $entries[] = [
                         'account_id' => $sgstOutput->id,
                         'type' => 'Cr',
                         'amount' => $taxAmt - $halfTax,
-                        'description' => "SGST 9% Output for Order #{$order->order_code}",
+                        'description' => "Output SGST for Order #{$order->order_code}",
                     ];
                 } else {
                     $entries[] = [
                         'account_id' => $igstOutput->id,
                         'type' => 'Cr',
                         'amount' => $taxAmt,
-                        'description' => "IGST 18% Output for Order #{$order->order_code}",
+                        'description' => "Output IGST (Inter-State) for Order #{$order->order_code}",
                     ];
                 }
+            }
+
+            // Absorb sub-rupee rounding. Anything larger means a component of the
+            // order (a discount, say) is not modelled here - fail loudly rather
+            // than bury it in round-off.
+            $drSum = 0.0; $crSum = 0.0;
+            foreach ($entries as $ent) {
+                if ($ent['type'] === 'Dr') { $drSum += $ent['amount']; } else { $crSum += $ent['amount']; }
+            }
+            $residual = round($drSum - $crSum, 2);
+
+            if (abs($residual) > 1.00) {
+                throw new Exception(sprintf(
+                    'Sales voucher for order #%s is out by %.2f. Payable %.2f, goods %.2f, delivery %.2f, tax %.2f, discount %.2f - an unmodelled component.',
+                    $order->order_code, $residual, $totalPayable, $taxableAmt, $deliveryCharge, $taxAmt,
+                    (float)($order->discount ?? 0) + (float)($order->coupon_discount ?? 0)
+                ));
+            }
+
+            if (abs($residual) >= 0.01) {
+                $entries[] = [
+                    'account_id' => $roundOffAccount->id,
+                    'type' => $residual > 0 ? 'Cr' : 'Dr',
+                    'amount' => abs($residual),
+                    'description' => "Round off for Order #{$order->order_code}",
+                ];
             }
 
             $voucherData = [
@@ -215,7 +260,7 @@ class GSTPostingService
                 'date' => now()->toDateString(),
                 'narration' => "Auto GST Sales Voucher for Invoice #{$order->order_code}",
                 'shop_id' => $order->shop_id,
-                'financial_year_id' => $order->financial_year_id ?? 1,
+                'financial_year_id' => $order->financial_year_id ?? $this->resolveFinancialYearId($order->created_at ?? now()),
                 'entries' => $entries,
             ];
 
@@ -230,13 +275,19 @@ class GSTPostingService
     {
         return DB::transaction(function () use ($posReturn) {
             $returnTotal = (float)$posReturn->total_amount;
-            $taxAmt = round($returnTotal * 0.18 / 1.18, 2);
-            $taxableAmt = $returnTotal - $taxAmt;
 
-            $salesReturnAccount = $this->getOrCreateSystemAccount('Sales Return A/c', 'SALES_RETURN', 'Sales Accounts', 'Revenue');
+            // The rate must follow the original sale. Assuming 18% reversed the
+            // wrong tax on every garment return - apparel is commonly 5% or 12%,
+            // and an inter-state sale carries IGST rather than CGST+SGST.
+            $rate = $this->resolveReturnTaxRate($posReturn);
+            $split = self::extractInclusiveTax($returnTotal, $rate, $this->resolveReturnPlaceOfSupply($posReturn));
+            $taxAmt = (float)$split['tax_amount'];
+            $taxableAmt = (float)$split['taxable_value'];
+
+            $salesReturnAccount = $this->getOrCreateSystemAccount('Sales Return A/c', 'SALES_RET', 'Sales Accounts', 'Revenue');
             $cgstOutput = $this->getOrCreateSystemAccount('CGST Output A/c', 'CGST_OUT', 'Duties & Taxes', 'Liability');
             $sgstOutput = $this->getOrCreateSystemAccount('SGST Output A/c', 'SGST_OUT', 'Duties & Taxes', 'Liability');
-            $cashAccount = $this->getOrCreateSystemAccount('Counter Cash Drawer A/c', 'CASH_COUNTER_1', 'Cash-in-Hand', 'Asset');
+            $cashAccount = $this->getOrCreateSystemAccount('Counter Cash Drawer A/c', 'CASH_DRAWER', 'Cash-in-Hand', 'Asset');
 
             $entries = [];
             $entries[] = [
@@ -247,19 +298,28 @@ class GSTPostingService
             ];
 
             if ($taxAmt > 0) {
-                $halfTax = round($taxAmt / 2, 2);
-                $entries[] = [
-                    'account_id' => $cgstOutput->id,
-                    'type' => 'Dr',
-                    'amount' => $halfTax,
-                    'description' => "CGST Reversal for Return Note #{$posReturn->return_code}",
-                ];
-                $entries[] = [
-                    'account_id' => $sgstOutput->id,
-                    'type' => 'Dr',
-                    'amount' => $taxAmt - $halfTax,
-                    'description' => "SGST Reversal for Return Note #{$posReturn->return_code}",
-                ];
+                if ((float)$split['igst'] > 0) {
+                    $igstOutput = $this->getOrCreateSystemAccount('IGST Output A/c', 'IGST_OUT', 'Duties & Taxes', 'Liability');
+                    $entries[] = [
+                        'account_id' => $igstOutput->id,
+                        'type' => 'Dr',
+                        'amount' => (float)$split['igst'],
+                        'description' => "IGST Reversal @{$rate}% for Return Note #{$posReturn->return_code}",
+                    ];
+                } else {
+                    $entries[] = [
+                        'account_id' => $cgstOutput->id,
+                        'type' => 'Dr',
+                        'amount' => (float)$split['cgst'],
+                        'description' => "CGST Reversal @{$rate}% for Return Note #{$posReturn->return_code}",
+                    ];
+                    $entries[] = [
+                        'account_id' => $sgstOutput->id,
+                        'type' => 'Dr',
+                        'amount' => (float)$split['sgst'],
+                        'description' => "SGST Reversal @{$rate}% for Return Note #{$posReturn->return_code}",
+                    ];
+                }
             }
 
             $entries[] = [
@@ -275,11 +335,59 @@ class GSTPostingService
                 'date' => now()->toDateString(),
                 'narration' => "Credit Note Tax Reversal for POS Return #{$posReturn->return_code}",
                 'shop_id' => $posReturn->shop_id,
-                'financial_year_id' => 1,
+                'financial_year_id' => $this->resolveFinancialYearId($posReturn->created_at ?? now()),
                 'entries' => $entries,
             ];
 
             return $this->voucherService->create($voucherData);
         });
+    }
+
+    /**
+     * Financial year covering a date. Both posting methods previously fell back to
+     * financial_year_id = 1, which on this database is 2016-2017.
+     */
+    protected function resolveFinancialYearId($date): int
+    {
+        $d = $date instanceof \DateTimeInterface ? $date->format('Y-m-d') : (string)$date;
+
+        $fy = DB::table('financial_years')
+            ->whereDate('start_date', '<=', $d)
+            ->whereDate('end_date', '>=', $d)
+            ->orderByDesc('start_date')
+            ->value('id');
+
+        return (int)($fy ?: DB::table('financial_years')->where('is_active', 1)->orderByDesc('start_date')->value('id') ?: 1);
+    }
+
+    /**
+     * GST rate for a return, taken from the lines of the original sale where they
+     * can be read, falling back to the shop's default VAT rate rather than a
+     * hardcoded 18%.
+     */
+    protected function resolveReturnTaxRate(POSReturn $posReturn): float
+    {
+        $rate = null;
+
+        if (!empty($posReturn->order_id)) {
+            $rate = DB::table('order_products')
+                ->where('order_id', $posReturn->order_id)
+                ->whereNotNull('tax_percentage')
+                ->where('tax_percentage', '>', 0)
+                ->value('tax_percentage');
+        }
+
+        if (!$rate) {
+            $rate = DB::table('vat_taxes')->where('is_active', 1)->orderBy('id')->value('percentage');
+        }
+
+        return (float)($rate ?: 0);
+    }
+
+    protected function resolveReturnPlaceOfSupply(POSReturn $posReturn): string
+    {
+        $order = !empty($posReturn->order_id) ? Order::withoutGlobalScopes()->find($posReturn->order_id) : null;
+
+        return $this->resolvePlaceOfSupply((int)$posReturn->shop_id, $order?->address);
     }
 }

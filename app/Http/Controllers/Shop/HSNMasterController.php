@@ -13,12 +13,27 @@ use Illuminate\Support\Facades\DB;
 
 class HSNMasterController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $shop = generaleSetting('shop');
-        $hsnMasters = HsnMaster::basicFields()->with('vattax:id,name,percentage')->where('shop_id',$shop->id)->paginate(10);
+        $rootShop = generaleSetting('rootShop');
+        $currentShop = generaleSetting('shop');
+        $shopIds = array_filter(array_unique([$rootShop?->id, $currentShop?->id, 1, 14]));
+        $search = $request->search ?? null;
 
-        return view('shop.hsn-master.index',compact('hsnMasters'));
+        $hsnMasters = HsnMaster::basicFields()
+            ->with('vattax:id,name,percentage')
+            ->whereIn('shop_id', $shopIds)
+            ->when($search, function ($query) use ($search) {
+                return $query->where(function ($q) use ($search) {
+                    $q->where('hsn_code', 'like', '%' . $search . '%')
+                      ->orWhere('hsn_description', 'like', '%' . $search . '%');
+                });
+            })
+            ->latest('id')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('shop.hsn-master.index', compact('hsnMasters', 'search'));
     }
 
     public function create()

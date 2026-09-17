@@ -1,38 +1,64 @@
 <template>
-  <div class="main-container">
+  <div class="main-container pb-16 lg:pb-24">
     <div v-show="!isLoading" class="grid grid-cols-1 xl:grid-cols-4">
       <div class="xl:col-span-3 col-span-1 lg:pr-6">
-        <div class="flex items-center gap-2 overflow-hidden pt-4">
-          <router-link to="/" class="w-6 h-6">
-            <HomeIcon class="w-5 h-5 text-slate-600" />
-          </router-link>
+        
+        <!-- Modern Breadcrumb -->
+        <nav aria-label="breadcrumb" class="pt-4 pb-1">
+          <ol class="flex items-center gap-2 text-sm text-slate-500 overflow-hidden">
+            <li>
+              <router-link to="/" class="hover:text-primary transition-colors flex items-center gap-1 font-medium">
+                <HomeIcon class="w-4 h-4 text-slate-400" />
+                <span>{{ $t("Home") }}</span>
+              </router-link>
+            </li>
+            <li class="text-slate-300">/</li>
+            <li v-if="product.category">
+              <span class="hover:text-primary transition-colors font-medium">{{ product.category }}</span>
+            </li>
+            <li v-if="product.category" class="text-slate-300">/</li>
+            <li class="text-slate-900 font-semibold truncate max-w-[280px] sm:max-w-md" aria-current="page">
+              {{ product.name }}
+            </li>
+          </ol>
+        </nav>
 
-          <div class="grow w-full overflow-hidden">
-            <div class="space-x-1 text-slate-600 text-sm font-normal truncate">
-              <router-link to="/">{{ $t("Home") }}</router-link>
-              <span>/</span>
-              <span>{{ product.name }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap lg:flex-nowrap gap-4 mt-6">
-          <div class="lg:w-[480px] w-full">
+        <!-- Product Hero Showcase: Media Gallery + Buy Box -->
+        <div class="flex flex-wrap lg:flex-nowrap gap-6 xl:gap-8 mt-4">
+          
+          <!-- Left: Media Gallery & Swiper Showcase -->
+          <div class="lg:w-[460px] xl:w-[480px] w-full shrink-0">
             <div class="w-full">
-              <div class="bg-slate-50 rounded-xl border border-slate-100 px-6">
+              <!-- Main Showcase Frame -->
+              <div class="bg-gradient-to-b from-slate-50/70 to-white rounded-3xl border border-slate-200/80 p-4 sm:p-6 relative shadow-xs overflow-hidden">
+                
+                <!-- Floating Discount Badge on Image -->
+                <div v-if="displayDiscount > 0 && displayDiscount < 100" class="absolute top-4 left-4 z-10">
+                  <span class="bg-gradient-to-r from-rose-500 to-red-600 text-white font-extrabold text-xs px-3 py-1.5 rounded-full shadow-md tracking-wider uppercase">
+                    {{ displayDiscount }}% {{ $t("OFF") }}
+                  </span>
+                </div>
+
+                <!-- Stock Status Indicator -->
+                <div class="absolute top-4 right-4 z-10">
+                  <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[11px] px-2.5 py-1 rounded-full shadow-2xs">
+                    {{ $t("In Stock") }}
+                  </span>
+                </div>
+
                 <swiper :spaceBetween="10" :thumbs="{ swiper: thumbsSwiper }" :modules="modules"
                         class="product-details-slider">
                   <swiper-slide v-for="thumbnail in product.thumbnails" :key="thumbnail.id"
                                 class="max-h-[448px] h-auto">
-                    <div v-if="thumbnail.thumbnail" class="zoom-container h-full"
+                    <div v-if="thumbnail.thumbnail" class="zoom-container h-full flex items-center justify-center"
                          @mousemove="handleMouseMove" @mouseleave="resetZoom"
                          @touchstart="handleMouseMove" @touchmove="handleMouseMove"
                          @touchend="resetZoom">
                       <img :src="thumbnail.thumbnail" alt="thumbnail"
-                           class="zoom-image h-full w-full object-contain" />
+                           class="zoom-image h-full w-full object-contain max-h-[400px]" />
                     </div>
-                    <div v-else class="h-full w-full bg-slate-200 flex justify-center items-center">
-                      <video v-if="thumbnail.type == 'file'" controls class="w-full">
+                    <div v-else class="h-full w-full bg-slate-200 rounded-2xl flex justify-center items-center">
+                      <video v-if="thumbnail.type == 'file'" controls class="w-full rounded-2xl">
                         <source :src="thumbnail.url" type="video/mp4">
                       </video>
                       <div v-else v-html="thumbnail.url" class="w-full overflow-hidden"
@@ -41,11 +67,14 @@
                   </swiper-slide>
                 </swiper>
               </div>
-              <div class="px-1 mt-2">
+
+              <!-- Thumbnails Slider Strip -->
+              <div class="px-1 mt-3">
                 <swiper @swiper="setThumbsSwiper" :spaceBetween="10" :slidesPerView="4" :freeMode="true"
                         :navigation="true" :watchSlidesProgress="true" :modules="modules"
                         class="product-details-thumbnail">
-                  <swiper-slide v-for="thumbnail in product.thumbnails" :key="thumbnail.id">
+                  <swiper-slide v-for="thumbnail in product.thumbnails" :key="thumbnail.id"
+                                class="rounded-xl overflow-hidden border border-slate-200 cursor-pointer hover:border-primary transition-all duration-200 shadow-2xs">
                     <img v-if="thumbnail.thumbnail" :src="thumbnail.thumbnail" alt=""
                          class="h-full w-full object-cover" />
 
@@ -55,433 +84,523 @@
                       </video>
                       <div v-else
                            class="h-full w-full overflow-hidden flex justify-center items-center">
-                        <img :src="'/assets/icons/video-player.svg'" alt="" width="70"
-                             height="70">
+                        <img :src="'/assets/icons/video-player.svg'" alt="" width="50"
+                             height="50">
                       </div>
                     </div>
                   </swiper-slide>
                 </swiper>
               </div>
+
+              <!-- Store Guarantee & Trust Perks -->
+              <div class="grid grid-cols-3 gap-2 mt-4 p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200/70 text-center">
+                <div class="flex flex-col items-center gap-1">
+                  <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+                  <span class="text-[11px] font-bold text-slate-700 leading-tight">{{ $t("Fast Delivery") }}</span>
+                </div>
+                <div class="flex flex-col items-center gap-1 border-x border-slate-200 px-1">
+                  <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                  <span class="text-[11px] font-bold text-slate-700 leading-tight">{{ $t("100% Genuine") }}</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                  <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  <span class="text-[11px] font-bold text-slate-700 leading-tight">{{ $t("Easy Returns") }}</span>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <div class="w-full sm:w-auto">
-            <!-- Flash Sale -->
+          <!-- Right: Core Product Details & Interactive Buy Box -->
+          <div class="w-full lg:flex-1">
+            
+            <!-- Flash Sale Countdown Banner -->
             <div v-if="flashSale"
-                 class="bg-slate-100 mb-3 sm:mb-6 rounded-lg sm:rounded-[44px] flex items-center justify-start gap-2 sm:gap-5 overflow-hidden flex-col sm:flex-row">
-              <div
-                  class="px-4 sm:px-8 py-2 bg-gradient-to-l from-primary to-primary-800 w-full sm:w-auto">
-                <div class="text-white text-sm sm:text-base font-bold leading-normal">
+                 class="bg-slate-100 mb-3 sm:mb-4 rounded-xl flex items-center justify-start gap-2 sm:gap-4 overflow-hidden flex-col sm:flex-row shadow-2xs">
+              <div class="px-4 sm:px-6 py-2 bg-gradient-to-l from-primary to-primary-800 w-full sm:w-auto">
+                <div class="text-white text-sm font-bold leading-normal">
                   {{ $t("Flash Sale") }}
                 </div>
               </div>
 
               <div class="h-full flex justify-center items-center flex-wrap pb-2 sm:pb-0">
-                <div class="text-center text-primary text-sm font-normal leading-tight pr-2">
+                <div class="text-center text-primary text-xs font-semibold leading-tight pr-2">
                   {{ $t("Ending in") }}
                 </div>
 
                 <div class="flex justify-center items-center gap-1 text-white">
                   <div v-if="endDay > 0" class="p-1 justify-center items-center gap-1 inline-flex">
-                    <div
-                        class="text-center text-primary text-base font-semibold font-['Inter'] leading-none">
-                      {{ endDay }}
-                    </div>
-                    <div
-                        class="text-center text-[#687387] text-[9.14px] font-normal font-['Inter'] leading-none">
-                      {{ $t("Days") }}
-                    </div>
+                    <div class="text-center text-primary text-sm font-bold font-mono">{{ endDay }}</div>
+                    <div class="text-center text-[#687387] text-[9.14px] font-normal leading-none">{{ $t("Days") }}</div>
                   </div>
-
-                  <span v-if="endDay > 0" class="text-black text-base font-bold">:</span>
+                  <span v-if="endDay > 0" class="text-black text-sm font-bold">:</span>
                   <div class="p-1 justify-center items-center gap-1 inline-flex">
-                    <div class="text-center text-primary text-base font-semibold font-['Inter']">
-                      {{ endHour }}
-                    </div>
-                    <div
-                        class="text-center text-[#687387] text-[9.14px] font-normal font-['Inter'] leading-none">
-                      {{ $t("Hours") }}
-                    </div>
+                    <div class="text-center text-primary text-sm font-bold font-mono">{{ endHour }}</div>
+                    <div class="text-center text-[#687387] text-[9.14px] font-normal leading-none">{{ $t("Hours") }}</div>
                   </div>
-
-                  <span class="text-black text-base font-bold">:</span>
+                  <span class="text-black text-sm font-bold">:</span>
                   <div class="p-1 justify-center items-center gap-1 inline-flex">
-                    <div class="text-center text-primary text-base font-semibold font-['Inter']">
-                      {{ endMinute }}
-                    </div>
-                    <div
-                        class="text-center text-[#687387] text-[9.14px] font-normal font-['Inter'] leading-none">
-                      {{ $t("Minutes") }}
-                    </div>
+                    <div class="text-center text-primary text-sm font-bold font-mono">{{ endMinute }}</div>
+                    <div class="text-center text-[#687387] text-[9.14px] font-normal leading-none">{{ $t("Minutes") }}</div>
                   </div>
-
-                  <span v-if="endDay <= 0" class="text-black text-base font-bold">:</span>
+                  <span v-if="endDay <= 0" class="text-black text-sm font-bold">:</span>
                   <div v-if="endDay <= 0" class="p-1 justify-center items-center gap-1 inline-flex">
-                    <div class="text-center text-primary text-base font-semibold font-['Inter']">
-                      {{ endSecond }}
-                    </div>
-                    <div
-                        class="text-center text-[#687387] text-[9.14px] font-normal font-['Inter'] leading-none">
-                      {{ $t("Seconds") }}
-                    </div>
+                    <div class="text-center text-primary text-sm font-bold font-mono">{{ endSecond }}</div>
+                    <div class="text-center text-[#687387] text-[9.14px] font-normal leading-none">{{ $t("Seconds") }}</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Brand -->
-            <span class="text-primary text-xs font-normal leading-none px-1.5 py-1 bg-primary-50 rounded">
-                            {{ product.brand ?? "" }}
-                        </span>
-
-            <!-- Title -->
-            <div class="mt-3 text-slate-950 text-2xl font-medium leading-normal">
-              {{ product.name }}
+            <!-- Brand Badge & SKU Row -->
+            <div class="flex items-center gap-2 flex-wrap mb-2">
+              <span v-if="product.brand" class="inline-flex items-center gap-1.5 text-primary font-bold text-xs uppercase tracking-wider px-3 py-1 bg-primary/10 rounded-full">
+                <svg class="w-3.5 h-3.5 text-primary" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
+                {{ product.brand }}
+              </span>
+              <span v-if="product.code" class="text-xs font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                SKU: {{ product.code }}
+              </span>
             </div>
+
+            <!-- Product Title -->
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-950 tracking-tight leading-snug">
+              {{ product.name }}
+            </h1>
 
             <!-- Short Description -->
-            <div class="mt-2 text-slate-700 text-base font-normal leading-normal">
+            <p v-if="product.short_description" class="mt-2 text-slate-600 text-sm sm:text-base leading-relaxed">
               {{ product.short_description }}
-            </div>
+            </p>
 
-            <!-- Rating, review, sold and share -->
-            <div class="py-5 flex flex-wrap justify-start items-center gap-4 border-b border-slate-200">
+            <!-- Rating, Review, Sold, Share & Favorite Bar -->
+            <div class="py-3.5 flex flex-wrap justify-start items-center gap-4 border-b border-slate-200/80 my-3">
               <div class="flex items-center gap-2">
                 <div class="flex">
-                  <StarIcon v-for="i in 5" :key="i" class="w-6 h-6 2xl:block hidden"
-                            :class="i <= product.rating ? 'text-amber-500' : 'text-gray-300'" />
+                  <StarIcon v-for="i in 5" :key="i" class="w-4 h-4"
+                            :class="i <= (product.rating || 5) ? 'text-amber-400' : 'text-slate-200'" />
                 </div>
-                <div class="text-slate-800 text-base font-bold">
-                  {{ product.rating }}
+                <div class="text-slate-900 text-sm font-bold">
+                  {{ (product.rating || 5).toFixed(1) }}
                 </div>
-                <div class="text-slate-500 text-base font-normal">
-                  {{ product.total_reviews }} {{ $t("Review") }}
+                <div class="text-slate-500 text-sm font-normal">
+                  ({{ product.total_reviews || 0 }} {{ $t("Review") }})
                 </div>
               </div>
 
-              <div class="w-[1px] h-4 bg-slate-200"></div>
+              <div class="w-px h-4 bg-slate-200"></div>
 
-              <div class="text-slate-800 text-base font-normal leading-normal">
-                {{ product.total_sold }} {{ $t("Sold") }}
+              <div class="text-slate-700 text-sm font-medium">
+                <span class="font-bold text-slate-900">{{ product.total_sold || 0 }}</span> {{ $t("Sold") }}
               </div>
 
-              <div class="w-[1px] h-4 bg-slate-200"></div>
+              <div class="w-px h-4 bg-slate-200"></div>
 
-              <Menu as="div" class="relative inline-block text-left">
-                <div>
-                  <MenuButton class="flex items-center gap-2 border-none">
-                    <ShareIcon class="w-[18px] text-slate-600" />
-                    <span class="text-slate-800 text-base font-normal leading-normal">
-                                            {{ $t("Share") }}
-                                        </span>
-                  </MenuButton>
-                </div>
+              <!-- Share & Favorite Icons -->
+              <div class="flex items-center gap-3">
+                <Menu as="div" class="relative inline-block text-left">
+                  <div>
+                    <MenuButton class="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 text-sm font-medium border-none bg-transparent cursor-pointer transition">
+                      <ShareIcon class="w-4 h-4 text-slate-600" />
+                      <span>{{ $t("Share") }}</span>
+                    </MenuButton>
+                  </div>
 
-                <transition enter-active-class="transition ease-out duration-100"
-                            enter-from-class="transform opacity-0 scale-95"
-                            enter-to-class="transform opacity-100 scale-100"
-                            leave-active-class="transition ease-in duration-75"
-                            leave-from-class="transform opacity-100 scale-100"
-                            leave-to-class="transform opacity-0 scale-95">
-                  <MenuItems
-                      class="absolute right-0 tr z-10 mt-2 w-56 origin-top rounded-md bg-white ring-1 shadow-lg ring-black/5 focus:outline-hidden">
-                    <div class="py-1 divide-y divide-gray-100">
-                      <MenuItem v-slot="{ active }" v-for="social in shareOptions"
-                                :key="social.name" class="cursor-pointer" @click="share(social.name)">
-                        <div
-                            class="flex items-center gap-2 justify-between px-4 py-2 hover:bg-slate-100 transition-all duration-200">
-                          <div class="flex items-center gap-1.5">
-                            <div class="w-7 h-7 p-1.5 flex justify-center items-center text-white rounded-full"
-                                 :class="`bg-[${social.color}]`">
-                              <FontAwesomeIcon :icon="social.icon" class="w-full h-full" />
-                            </div>
-                            <span class="capitalize">{{ social.name }}</span>
-                          </div>
+                  <transition enter-active-class="transition ease-out duration-100"
+                              enter-from-class="transform opacity-0 scale-95"
+                              enter-to-class="transform opacity-100 scale-100"
+                              leave-active-class="transition ease-in duration-75"
+                              leave-from-class="transform opacity-100 scale-100"
+                              leave-to-class="transform opacity-0 scale-95">
+                    <MenuItems
+                        class="absolute right-0 z-20 mt-2 w-56 origin-top rounded-xl bg-white shadow-xl ring-1 ring-black/5 focus:outline-hidden p-1">
+                      <div class="py-1 divide-y divide-gray-100">
+                        <MenuItem v-slot="{ active }" v-for="social in shareOptions"
+                                  :key="social.name" class="cursor-pointer" @click="share(social.name)">
                           <div
-                              class="w-5 h-5 p-1 flex justify-center items-center bg-slate-200 rounded-full rotate-45">
-                            <FontAwesomeIcon :icon="faArrowUp"
-                                             class="w-full h-full text-slate-500" />
+                              class="flex items-center gap-2 justify-between px-3.5 py-2 hover:bg-slate-100 rounded-lg transition-all duration-200">
+                            <div class="flex items-center gap-2">
+                              <div class="w-7 h-7 p-1.5 flex justify-center items-center text-white rounded-full"
+                                   :class="`bg-[${social.color}]`">
+                                <FontAwesomeIcon :icon="social.icon" class="w-full h-full" />
+                              </div>
+                              <span class="capitalize text-sm font-medium text-slate-700">{{ social.name }}</span>
+                            </div>
+                            <div
+                                class="w-5 h-5 p-1 flex justify-center items-center bg-slate-200 rounded-full rotate-45">
+                              <FontAwesomeIcon :icon="faArrowUp"
+                                               class="w-full h-full text-slate-500" />
+                            </div>
                           </div>
-                        </div>
-                      </MenuItem>
-                    </div>
-                  </MenuItems>
-                </transition>
-              </Menu>
+                        </MenuItem>
+                      </div>
+                    </MenuItems>
+                  </transition>
+                </Menu>
 
-              <div class="w-[1px] h-4 bg-slate-200"></div>
-
-              <button class="border-none" @click="favoriteAddOrRemove">
-                <HeartIcon v-if="!product.is_favorite" class="w-6 h-6 text-slate-600" />
-                <HeartIconFill v-else class="w-6 h-6 text-red-500" />
-              </button>
-            </div>
-
-            <!-- Price part -->
-            <div class="flex items-center gap-3 py-4 border-b border-slate-200 flex-wrap">
-              <div class="text-primary text-3xl font-bold leading-9">
-                {{ masterStore.showCurrency(parseFloat(displaySellingPrice).toFixed(2)) }}
-              </div>
-
-              <div v-if="displayDiscount > 0 && displayDiscount < 100"
-                   class="text-slate-400 text-2xl font-normal line-through leading-loose">
-                {{ masterStore.showCurrency(parseFloat(displayOriginalPrice).toFixed(2)) }}
-              </div>
-
-              <div v-if="displayDiscount > 0 && displayDiscount < 100"
-                   class="px-2 py-1 bg-red-500 rounded-2xl text-white text-base font-medium">
-                {{ displayDiscount }}% {{ $t("OFF") }}
+                <button class="border-none bg-transparent p-1 cursor-pointer hover:scale-110 transition" @click="favoriteAddOrRemove" :title="$t('Wishlist')">
+                  <HeartIcon v-if="!product.is_favorite" class="w-5 h-5 text-slate-500 hover:text-red-500 transition" />
+                  <HeartIconFill v-else class="w-5 h-5 text-red-500" />
+                </button>
               </div>
             </div>
 
-            <!-- ============================================================ -->
-            <!-- ✅ Color & Size Variant Selector - Dynamic with DROPDOWNS -->
-            <!-- ============================================================ -->
-            <div v-if="hasColors || hasSizes && (validColorVariants.length > 0 || sizeOnlyVariants.length > 0)" class="py-4 border-b border-slate-200">
-              <!-- Show title based on what exists -->
-              <div v-if="hasColors && hasSizes" class="text-slate-800 text-base font-semibold mb-3">
-                {{ $t("Select Variant") }}
-                <span class="bg-primary text-white ml-2 px-2 py-0.5 rounded-full text-xs">
-                      {{ displayColorCount }} {{ $t("Colors") }}
-                </span>
-              </div>
-              <div v-else-if="hasColors && !hasSizes" class="text-slate-800 text-base font-semibold mb-3">
-                {{ $t("Select Color") }}
-                <span class="bg-primary text-white ml-2 px-2 py-0.5 rounded-full text-xs">
-                                    {{ displayColorCount }} {{ $t("Colors") }}
-                                </span>
-              </div>
-              <div v-else-if="!hasColors && hasSizes" class="text-slate-800 text-base font-semibold mb-3">
-                {{ $t("Select Size") }}
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <!-- Color Select - Only if colors exist -->
-                <div v-if="hasColors">
-                  <label class="block text-sm font-medium text-slate-600 mb-1">
-                    {{ $t("Color") }}
-                  </label>
-                  <select v-model="selectedColor" @change="onColorChange"
-                          class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-white">
-                    <option v-for="color in validColorVariants" :key="color.id" :value="color.id">
-                      {{ color.name }}
-                    </option>
-                  </select>
+            <!-- Price Highlight Box -->
+            <div class="p-4 rounded-2xl bg-gradient-to-r from-primary/5 via-slate-50 to-white border border-primary/10 my-4 shadow-2xs">
+              <div class="flex items-baseline gap-3 flex-wrap">
+                <div class="text-primary text-3xl sm:text-4xl font-black font-mono tracking-tight">
+                  {{ masterStore.showCurrency(parseFloat(displaySellingPrice).toFixed(2)) }}
                 </div>
 
-                <!-- Size Select - Only if sizes exist -->
-                <div v-if="hasSizes">
-                  <label class="block text-sm font-medium text-slate-600 mb-1">
-                    {{ $t("Size") }}
-                  </label>
-                  <select v-model="selectedSize"
-                          class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-white"
-                          :disabled="!selectedColor && hasColors">
-                    <option value="">{{ $t("Select Size") }}</option>
-                    <option v-for="size in availableSizes" :key="size.id" :value="size.id">
-                      {{ size.name }}
-                    </option>
-                  </select>
+                <div v-if="displayDiscount > 0 && displayDiscount < 100"
+                     class="text-slate-400 text-xl font-mono line-through font-normal">
+                  {{ masterStore.showCurrency(parseFloat(displayOriginalPrice).toFixed(2)) }}
+                </div>
+
+                <div v-if="displayDiscount > 0 && displayDiscount < 100"
+                     class="px-3 py-1 bg-gradient-to-r from-rose-500 to-red-600 rounded-full text-white text-xs font-extrabold shadow-sm tracking-wider uppercase">
+                  {{ displayDiscount }}% {{ $t("OFF") }}
+                </div>
+              </div>
+              <p class="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>{{ $t("Inclusive of all taxes • In Stock with fast dispatch") }}</span>
+              </p>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- ✅ MODERN INTERACTIVE VARIANT SELECTOR (Chips & Pills) -->
+            <!-- ============================================================ -->
+            <div v-if="hasColors || hasSizes && (validColorVariants.length > 0 || sizeOnlyVariants.length > 0)" class="py-4 border-b border-slate-200/80">
+              
+              <!-- 1. Color Selector with Visual Swatches -->
+              <div v-if="hasColors && validColorVariants.length > 0" class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs uppercase font-bold text-slate-500 tracking-wider">{{ $t("Color") }}:</span>
+                    <span class="text-sm font-extrabold text-slate-900">{{ selectedColorObj?.name || $t("Select Color") }}</span>
+                  </div>
+                  <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-medium">
+                    {{ validColorVariants.length }} {{ validColorVariants.length === 1 ? $t("Color") : $t("Colors") }}
+                  </span>
+                </div>
+
+                <div class="flex flex-wrap gap-2.5">
+                  <button v-for="color in validColorVariants" :key="color.id"
+                          type="button"
+                          @click="selectedColor = color.id; onColorChange()"
+                          class="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold transition-all duration-200 cursor-pointer"
+                          :class="selectedColor == color.id 
+                                  ? 'border-primary bg-primary-50/60 ring-2 ring-primary/25 text-slate-900 shadow-xs' 
+                                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 text-slate-700'">
+                    <span class="w-3.5 h-3.5 rounded-full border border-black/10 shadow-2xs shrink-0"
+                          :style="{ backgroundColor: color.color_code || '#ccc' }"></span>
+                    <span>{{ color.name }}</span>
+                  </button>
                 </div>
               </div>
 
-              <!-- Selected Variant Details -->
+              <!-- 2. Size Selector with Interactive Pills -->
+              <div v-if="hasSizes && availableSizes.length > 0" class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs uppercase font-bold text-slate-500 tracking-wider">{{ $t("Size") }}:</span>
+                    <span class="text-sm font-extrabold text-slate-900 font-mono">{{ selectedSizeObj?.name || $t("Select Size") }}</span>
+                  </div>
+                  <span class="text-xs text-slate-400">{{ $t("Click size to update pricing") }}</span>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <button v-for="size in availableSizes" :key="size.id"
+                          type="button"
+                          @click="handleSizeSelect(size)"
+                          class="h-11 min-w-[50px] px-3.5 rounded-xl border text-sm font-bold font-mono transition-all duration-200 flex items-center justify-center cursor-pointer"
+                          :class="selectedSize == size.id 
+                                  ? 'bg-primary text-white border-primary shadow-md shadow-primary/25 scale-[1.03]' 
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-primary hover:text-primary hover:bg-slate-50'">
+                    {{ size.name }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Selected Variant Summary Card -->
               <div v-if="(hasColors && selectedColor) || (!hasColors && selectedSize)"
-                   class="mt-3 p-3 bg-primary-50 rounded-lg border border-primary-200">
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                   class="mt-4 p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200/80 shadow-2xs">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
                   <div v-if="hasColors">
-                    <span class="text-xs text-slate-500">{{ $t("Color") }}</span>
-                    <div class="flex items-center gap-2 mt-1">
-                                            <span class="w-4 h-4 rounded-full border border-slate-300 inline-block"
-                                                  :style="{ backgroundColor: selectedColorObj?.color_code || '#ccc' }"></span>
-                      <span class="font-medium text-sm">{{ selectedColorObj?.name }}</span>
+                    <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">{{ $t("Selected Color") }}</span>
+                    <div class="flex items-center gap-1.5">
+                      <span class="w-3 h-3 rounded-full border border-black/10 inline-block shadow-2xs"
+                            :style="{ backgroundColor: selectedColorObj?.color_code || '#ccc' }"></span>
+                      <span class="font-bold text-sm text-slate-800">{{ selectedColorObj?.name }}</span>
                     </div>
                   </div>
                   <div v-if="hasSizes">
-                    <span class="text-xs text-slate-500">{{ $t("Size") }}</span>
-                    <div class="font-medium text-sm mt-1">{{ selectedSizeObj?.name || '-' }}</div>
+                    <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">{{ $t("Selected Size") }}</span>
+                    <div class="font-bold text-sm text-slate-800 font-mono">{{ selectedSizeObj?.name || '-' }}</div>
                   </div>
                   <div>
-                    <span class="text-xs text-slate-500">{{ $t("MRP") }}</span>
-                    <div class="font-bold text-primary text-sm mt-1">
+                    <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">{{ $t("Physical MRP") }}</span>
+                    <div class="font-bold text-slate-600 text-sm font-mono">
                       ₹{{ formatNumber(selectedMrp) }}
                     </div>
                   </div>
-                  <div class="hidden">
-                    <span class="text-xs text-slate-500">{{ $t("Qty Available") }}</span>
-                    <div class="font-bold text-sm mt-1" :class="selectedQty > 0 ? 'text-green-600' : 'text-red-600'">
-                      {{ selectedQty }}
+                  <div>
+                    <span class="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">{{ $t("Online Price") }}</span>
+                    <div class="font-extrabold text-primary text-sm font-mono">
+                      ₹{{ formatNumber(displaySellingPrice) }}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- All Variants Table - Dynamic Columns -->
-              <div class="mt-4 overflow-x-auto hidden">
-                <table class="w-full text-xs border-collapse">
-                  <thead>
-                  <tr class="bg-slate-100">
-                    <!-- Color column only if colors exist -->
-                    <th v-if="hasColors" class="p-1.5 text-left font-semibold">{{ $t("Color") }}</th>
-                    <!-- Size column only if sizes exist -->
-                    <th v-if="hasSizes" class="p-1.5 text-left font-semibold">{{ $t("Sizes") }}</th>
-                    <th class="p-1.5 text-center font-semibold">{{ $t("Qty") }}</th>
-                    <th class="p-1.5 text-right font-semibold">{{ $t("MRP") }}</th>
-                    <th class="p-1.5 text-center font-semibold">{{ $t("Disc %") }}</th>
-                  </tr>
-                  </thead>
-                  <tbody>
-                  <!-- For Color + Size products -->
-                  <tr v-for="color in validColorVariants" :key="color.id"
-                      v-if="hasColors && hasSizes"
-                      class="border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer"
-                      @click="selectedColor = color.id; onColorChange()"
-                      :class="{ 'bg-primary-50': selectedColor == color.id }">
-                    <td class="p-1.5">
-                      <div class="flex items-center gap-1.5">
-                                                    <span class="w-3 h-3 rounded-full border border-slate-300 inline-block"
-                                                          :style="{ backgroundColor: color.color_code || '#ccc' }"></span>
-                        <span>{{ color.name }}</span>
-                      </div>
-                    </td>
-                    <td class="p-1.5">
-                      <span class="text-xs">{{ getSizeNames(color.sizes) }}</span>
-                    </td>
-                    <td class="p-1.5 text-center">{{ color.qty }}</td>
-                    <td class="p-1.5 text-right font-medium text-primary">
-                      ₹{{ formatNumber(color.mrp) }}
-                    </td>
-                    <td class="p-1.5 text-center">
-                                                <span v-if="color.discount_percent > 0"
-                                                      class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs">
-                                                    {{ color.discount_percent }}%
-                                                </span>
-                      <span v-else class="text-slate-300">-</span>
-                    </td>
-                  </tr>
-
-                  <!-- For Only Color products -->
-                  <tr v-for="color in validColorVariants" :key="color.id"
-                      v-if="hasColors && !hasSizes"
-                      class="border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer"
-                      @click="selectedColor = color.id; onColorChange()"
-                      :class="{ 'bg-primary-50': selectedColor == color.id }">
-                    <td class="p-1.5">
-                      <div class="flex items-center gap-1.5">
-                                                    <span class="w-3 h-3 rounded-full border border-slate-300 inline-block"
-                                                          :style="{ backgroundColor: color.color_code || '#ccc' }"></span>
-                        <span>{{ color.name }}</span>
-                      </div>
-                    </td>
-                    <td class="p-1.5 text-center">{{ color.qty }}</td>
-                    <td class="p-1.5 text-right font-medium text-primary">
-                      ₹{{ formatNumber(color.mrp) }}
-                    </td>
-                    <td class="p-1.5 text-center">
-                                                <span v-if="color.discount_percent > 0"
-                                                      class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs">
-                                                    {{ color.discount_percent }}%
-                                                </span>
-                      <span v-else class="text-slate-300">-</span>
-                    </td>
-                  </tr>
-
-                  <!-- For Only Size products -->
-                  <tr v-for="size in sizeOnlyVariants" :key="size.id"
-                      v-if="!hasColors && hasSizes"
-                      class="border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer"
-                      @click="selectedSize = size.id; onSizeOnlySelect(size)"
-                      :class="{ 'bg-primary-50': selectedSize == size.id }">
-                    <td class="p-1.5">
-                      <span>{{ size.name }}</span>
-                    </td>
-                    <td class="p-1.5 text-center">{{ size.qty }}</td>
-                    <td class="p-1.5 text-right font-medium text-primary">
-                      ₹{{ formatNumber(size.mrp) }}
-                    </td>
-                    <td class="p-1.5 text-center">
-                                                <span v-if="size.discount_percent > 0"
-                                                      class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs">
-                                                    {{ size.discount_percent }}%
-                                                </span>
-                      <span v-else class="text-slate-300">-</span>
-                    </td>
-                  </tr>
-                  </tbody>
-                </table>
-              </div>
             </div>
-            <!-- ============================================================ -->
 
             <!-- Error Messages -->
-            <div v-if="validationError" class="mt-2 text-red-500 text-sm">
+            <div v-if="validationError" class="mt-2 text-red-500 text-sm font-medium">
               {{ validationError }}
             </div>
 
-            <div class="flex flex-wrap gap-4 mt-4">
+            <!-- Quantity Stepper & CTA Action Buttons -->
+            <div class="flex items-center gap-3.5 mt-6 flex-wrap sm:flex-nowrap w-full max-w-xl">
+              
+              <!-- Quantity Stepper when in cart -->
               <div v-if="cartProduct"
-                   class="p-2 rounded-[10px] border border-slate-100 inline-flex gap-4">
-                <button class="bg-slate-200 p-2 rounded" @click="decrementQty">
-                  <MinusIcon class="w-6 h-6 text-slate-800" />
+                   class="h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 inline-flex items-center gap-3 shrink-0">
+                <button class="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center transition shadow-2xs cursor-pointer" @click="decrementQty">
+                  <MinusIcon class="w-4 h-4 text-slate-700" />
                 </button>
-                <div
-                    class="w-6 flex items-center justify-center text-center text-slate-950 text-base font-medium leading-normal">
+                <div class="w-8 text-center text-slate-900 text-base font-bold font-mono">
                   {{ cartProduct.quantity }}
                 </div>
-                <button class="bg-slate-100 p-2 rounded" @click="incrementQty">
-                  <PlusIcon class="w-6 h-6 text-slate-800" />
+                <button class="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center transition shadow-2xs cursor-pointer" @click="incrementQty">
+                  <PlusIcon class="w-4 h-4 text-slate-700" />
                 </button>
               </div>
 
+              <!-- Add to Cart Button -->
               <button v-if="!cartProduct"
-                      class="grow max-w-56 justify-center items-center flex gap-2 px-6 py-4 rounded-[10px] border transition-all duration-200"
-                      :class="canAddToCart ? 'text-primary border-primary hover:bg-primary hover:text-white' : 'text-slate-400 border-slate-200 cursor-not-allowed'"
+                      class="flex-1 min-w-[160px] h-12 justify-center items-center flex gap-2.5 px-6 rounded-xl border-2 font-bold text-base transition-all duration-200 shadow-xs cursor-pointer active:scale-[0.99]"
+                      :class="canAddToCart ? 'text-primary border-primary bg-primary/5 hover:bg-primary hover:text-white' : 'text-slate-400 border-slate-200 cursor-not-allowed bg-slate-50'"
                       :disabled="!canAddToCart"
                       @click="addToCart">
                 <div class="w-5 h-5">
-                  <BagIcon :class="canAddToCart ? 'text-primary' : 'text-slate-400'" />
+                  <BagIcon :class="canAddToCart ? 'text-current' : 'text-slate-400'" />
                 </div>
-                <div class="text-base font-medium leading-normal">
-                  {{ $t("Add to Cart") }}
-                </div>
+                <span>{{ $t("Add to Cart") }}</span>
               </button>
 
+              <!-- Buy Now High Impact Button -->
               <button
-                  class="grow px-6 py-4 rounded-[10px] border transition-all duration-200 max-w-[50%]"
-                  :class="canAddToCart ? 'text-white bg-primary border-primary hover:bg-primary-800' : 'text-slate-400 bg-slate-200 border-slate-200 cursor-not-allowed'"
+                  class="flex-1 min-w-[160px] h-12 px-6 rounded-xl font-bold text-base text-white transition-all duration-200 shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/35 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                  :class="canAddToCart ? 'bg-primary hover:bg-primary-700' : 'bg-slate-300 cursor-not-allowed shadow-none'"
                   :disabled="!canAddToCart"
                   @click="buyNow">
-                                <span class="text-base font-medium leading-normal">
-                                    {{ $t("Buy Now") }}
-                                </span>
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span>{{ $t("Buy Now") }}</span>
               </button>
             </div>
+
           </div>
         </div>
 
-        <div class="block xl:hidden w-full pt-6 border-slate-200">
+        <!-- Mobile Right Side View -->
+        <div class="block xl:hidden w-full pt-8 border-t border-slate-200/80 mt-8">
           <ProductDetailsRightSide :product="product" :popularProducts="popularProducts" />
         </div>
 
-        <div class="flex items-center gap-8 flex-wrap border-b mt-3 mb-4 xl:my-6">
-          <button class="py-3 transition text-base font-medium leading-normal border-b"
-                  :class="aboutProduct ? 'text-primary border-primary' : 'text-slate-600 border-transparent'"
-                  @click="aboutProduct = true; review = false;">
-            {{ $t("About Product") }}
+        <!-- ============================================================ -->
+        <!-- LOWER SECTION: MODERN TABS (About, Specifications & Reviews) -->
+        <!-- ============================================================ -->
+        <div class="flex items-center gap-2 sm:gap-6 border-b border-slate-200 mt-10 mb-6 overflow-x-auto no-scrollbar">
+          <!-- Tab 1: About Product -->
+          <button class="pb-3.5 px-2 transition text-base font-bold relative flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                  :class="aboutProduct ? 'text-primary' : 'text-slate-500 hover:text-slate-800'"
+                  @click="selectTab('about')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>{{ $t("About Product") }}</span>
+            <span v-if="aboutProduct" class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"></span>
           </button>
-          <button class="py-3 transition text-base font-medium leading-normal border-b"
-                  :class="review ? 'text-primary border-primary' : 'text-slate-600 border-transparent'"
-                  @click="showReview()">
-            {{ $t("Reviews") }}
+
+          <!-- Tab 2: Specifications & Details -->
+          <button class="pb-3.5 px-2 transition text-base font-bold relative flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                  :class="specifications ? 'text-primary' : 'text-slate-500 hover:text-slate-800'"
+                  @click="selectTab('specs')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+            <span>{{ $t("Specifications & Details") }}</span>
+            <span v-if="specifications" class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"></span>
+          </button>
+
+          <!-- Tab 3: Reviews -->
+          <button class="pb-3.5 px-2 transition text-base font-bold relative flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                  :class="review ? 'text-primary' : 'text-slate-500 hover:text-slate-800'"
+                  @click="selectTab('reviews')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+            <span>{{ $t("Reviews") }}</span>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">{{ product.total_reviews ?? 0 }}</span>
+            <span v-if="review" class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"></span>
           </button>
         </div>
 
-        <!-- About Product -->
-        <div v-if="aboutProduct" class="description">
-          <div class="prose max-w-none w-full m-0" v-html="product.description"></div>
+        <!-- Tab 1: About Product -->
+        <div v-if="aboutProduct" class="product-description-wrapper">
+          <div class="prose prose-slate max-w-none w-full text-slate-700 leading-relaxed font-normal text-base" v-html="product.description"></div>
         </div>
 
-        <!-- Reviews -->
+        <!-- Tab 2: Specifications & Details -->
+        <div v-if="specifications" class="space-y-6">
+          
+          <!-- General Specs Card -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                </div>
+                <h3 class="font-bold text-slate-900 text-base">{{ $t("General Specifications") }}</h3>
+              </div>
+              <span class="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full">
+                {{ $t("Verified Details") }}
+              </span>
+            </div>
+
+            <div class="divide-y divide-slate-100">
+              <div v-if="product.brand" class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("Brand") }}</div>
+                <div class="sm:col-span-2 text-sm font-bold text-slate-900">{{ product.brand }}</div>
+              </div>
+
+              <div v-if="product.category" class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("Category") }}</div>
+                <div class="sm:col-span-2 text-sm font-semibold text-slate-900">{{ product.category }}</div>
+              </div>
+
+              <div v-if="getUnitName(product.unit)" class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("Unit") }}</div>
+                <div class="sm:col-span-2 text-sm font-semibold text-slate-900 uppercase font-mono">{{ getUnitName(product.unit) }}</div>
+              </div>
+
+              <div v-if="product.code" class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("SKU / Item Code") }}</div>
+                <div class="sm:col-span-2 text-sm font-bold text-slate-900 font-mono">{{ product.code }}</div>
+              </div>
+
+              <div v-if="product.min_order_quantity" class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("Min Order Quantity") }}</div>
+                <div class="sm:col-span-2 text-sm font-semibold text-slate-900">{{ product.min_order_quantity }} {{ getUnitName(product.unit) || 'Unit(s)' }}</div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("Availability") }}</div>
+                <div class="sm:col-span-2">
+                  <span v-if="product.quantity > 0" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    {{ $t("In Stock") }} ({{ product.quantity }} {{ getUnitName(product.unit) || 'available' }})
+                  </span>
+                  <span v-else class="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-md">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                    {{ $t("Out of Stock") }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Physical & Packaging Specs -->
+          <div v-if="product.length || product.width || product.height || product.weight"
+               class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50/80 border-b border-slate-200/80 flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+              </div>
+              <h3 class="font-bold text-slate-900 text-base">{{ $t("Dimensions & Packaging") }}</h3>
+            </div>
+
+            <div class="divide-y divide-slate-100">
+              <div v-if="product.length || product.width || product.height" class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("Package Dimensions") }}</div>
+                <div class="sm:col-span-2 text-sm font-bold text-slate-900 font-mono">
+                  {{ product.length || '-' }} (L) × {{ product.width || '-' }} (W) × {{ product.height || '-' }} (H) cm
+                </div>
+              </div>
+
+              <div v-if="product.weight" class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("Package Weight") }}</div>
+                <div class="sm:col-span-2 text-sm font-bold text-slate-900 font-mono">{{ product.weight }} kg</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Variant Attributes Summary -->
+          <div v-if="product.colors?.length > 0 || product.sizes?.length > 0"
+               class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div class="px-5 py-4 bg-slate-50/80 border-b border-slate-200/80 flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+              </div>
+              <h3 class="font-bold text-slate-900 text-base">{{ $t("Available Variants & Options") }}</h3>
+            </div>
+
+            <div class="divide-y divide-slate-100">
+              <div v-if="product.colors?.length > 0" class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 items-center hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("Available Colors") }}</div>
+                <div class="sm:col-span-2 flex flex-wrap gap-2 items-center">
+                  <span v-for="c in product.colors" :key="c.id"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800">
+                    <span class="w-3 h-3 rounded-full border border-black/15 shrink-0" :style="{ backgroundColor: c.color_code }"></span>
+                    {{ c.name }}
+                  </span>
+                </div>
+              </div>
+
+              <div v-if="product.sizes?.length > 0" class="grid grid-cols-1 sm:grid-cols-3 px-5 py-3.5 items-center hover:bg-slate-50/50 transition">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t("Available Sizes") }}</div>
+                <div class="sm:col-span-2 flex flex-wrap gap-2 items-center">
+                  <span v-for="s in product.sizes" :key="s.id"
+                        class="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 font-mono">
+                    {{ s.name }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trust & Authenticity Highlights -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
+            <div class="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">{{ $t("100% Genuine") }}</h4>
+                <p class="text-xs text-slate-500 mt-0.5">{{ $t("Directly sourced authentic quality products.") }}</p>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">{{ $t("Fast Delivery") }}</h4>
+                <p class="text-xs text-slate-500 mt-0.5">{{ product.shop?.estimated_delivery_time || '2-4 days' }} {{ $t("standard shipping.") }}</p>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide">{{ $t("Hassle-Free Returns") }}</h4>
+                <p class="text-xs text-slate-500 mt-0.5">{{ $t("Quick support and easy replacement policy.") }}</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Tab 2: Reviews -->
         <div v-if="review" class="">
           <div class="text-slate-950 text-lg lg:text-2xl font-medium leading-loose mb-4">
             {{ $t("Rating and Review") }}
@@ -517,8 +636,8 @@
         </div>
       </div>
 
-      <!-- Right side -->
-      <div class="hidden xl:block col-span-1 w-full pt-6 h-full xl:pt-16 border-slate-200 xl:pb-6"
+      <!-- Right side Column -->
+      <div class="hidden xl:block col-span-1 w-full pt-6 h-full xl:pt-14 border-slate-200 xl:pb-6"
            :class="masterStore.langDirection == 'rtl' ? 'xl:pr-8 xl:border-r' : 'xl:pl-8 xl:border-l'">
         <ProductDetailsRightSide :product="product" :popularProducts="popularProducts" />
       </div>
@@ -654,7 +773,25 @@ const relatedProducts = ref([]);
 const popularProducts = ref([]);
 
 const aboutProduct = ref(true);
+const specifications = ref(false);
 const review = ref(false);
+
+const selectTab = (tab) => {
+  aboutProduct.value = (tab === 'about');
+  specifications.value = (tab === 'specs');
+  review.value = (tab === 'reviews');
+  if (tab === 'reviews') {
+    fetchReviews();
+  }
+};
+
+const getUnitName = (unit) => {
+  if (!unit) return '';
+  if (typeof unit === 'object') {
+    return unit.name || unit.unit || '';
+  }
+  return unit;
+};
 
 const cartProduct = ref(null);
 const isLoading = ref(true);
@@ -793,48 +930,71 @@ const canAddToCart = computed(() => {
 // Original Price (MRP) - Full price before discount
 const displayOriginalPrice = computed(() => {
   // If variant selected with MRP
-  if (selectedColor.value && selectedMrp.value > 0) {
-    const discountAdd = product.value.discount_price
-    const productPrice = product.value.price * discountAdd / 100;
-    return selectedMrp.value + productPrice;
+  if (selectedMrp.value > 0) {
+    return selectedMrp.value;
   }
   // If product has MRP
-  if (product.value.mrp > 0) {
-    return product.value.mrp;
+  if (parseFloat(product.value.mrp || 0) > 0) {
+    return parseFloat(product.value.mrp);
   }
-  return product.value.price || 0;
+  return parseFloat(product.value.price || 0);
 });
 
 // Selling Price - After discount
 const displaySellingPrice = computed(() => {
   // If variant selected
-  if (selectedColor.value && selectedMrp.value > 0) {
-    // const discount = displayDiscount.value;
-    // if (discount > 0 && discount < 100) {
-    //   // Apply discount on MRP
-    //   return selectedMrp.value - (selectedMrp.value * discount / 100);
-    // }
-    return selectedMrp.value;
+  if (hasColors.value || hasSizes.value) {
+    if (selectedMrp.value > 0) {
+      const discount = displayDiscount.value;
+      if (discount > 0 && discount < 100) {
+        // Apply discount on MRP
+        return Number((selectedMrp.value - (selectedMrp.value * discount / 100)).toFixed(2));
+      }
+      return selectedMrp.value;
+    }
   }
 
-  // Product price (if no variant selected)
-  if (displayDiscount.value > 0 && displayDiscount.value < 100) {
-    return product.value.discount_price || product.value.price || 0;
+  // Simple product (no variants) - Same logic as ProductCard on /products:
+  const normalPrice = parseFloat(product.value.price || 0);
+  const normalDiscountPrice = parseFloat(product.value.discount_price || 0);
+
+  if (normalDiscountPrice > 0 && normalDiscountPrice < normalPrice) {
+    return normalDiscountPrice;
   }
-  return product.value.price || 0;
+
+  if (displayDiscount.value > 0 && displayDiscount.value < 100) {
+    const orig = displayOriginalPrice.value;
+    if (orig > 0) {
+      return Number((orig - (orig * displayDiscount.value / 100)).toFixed(2));
+    }
+  }
+
+  return normalDiscountPrice > 0 ? normalDiscountPrice : normalPrice;
 });
 
-// ✅ Display discount percentage - Only for selected variant with discount
+// ✅ Display discount percentage
 const displayDiscount = computed(() => {
   // If variant selected with discount
-  if (selectedColor.value && selectedDiscount.value > 0) {
+  if ((selectedColor.value || selectedSize.value) && selectedDiscount.value > 0 && selectedDiscount.value < 100) {
     return selectedDiscount.value;
   }
 
-  // ✅ Only show product discount if NO variant is selected
-  // AND product has discount
-  if (!selectedColor.value && parseFloat(product.value.discount_price) > 0) {
-    return parseFloat(product.value.discount_price);
+  // If no variant selected or simple product, check product discount percentage
+  const discountPercent = parseFloat(
+    product.value.discount_percentage ||
+    product.value.online_discount_percent ||
+    0
+  );
+
+  if (discountPercent > 0 && discountPercent < 100) {
+    return discountPercent;
+  }
+
+  // If discount_percentage is not explicitly provided, but discount_price is lower than price/mrp:
+  const original = parseFloat(displayOriginalPrice.value || 0);
+  const discounted = parseFloat(product.value.discount_price || 0);
+  if (original > 0 && discounted > 0 && discounted < original) {
+    return Number((((original - discounted) / original) * 100).toFixed(2));
   }
 
   return 0;
@@ -923,6 +1083,15 @@ const onSizeOnlySelect = (size) => {
   selectedDiscount.value = size.discount_percent || 0;
   selectedQty.value = size.qty || 0;
   validationError.value = '';
+};
+
+const handleSizeSelect = (size) => {
+  if (!hasColors.value && sizeOnlyVariants.value.length > 0) {
+    onSizeOnlySelect(size);
+  } else {
+    selectedSize.value = size.id;
+    updateSelectedVariantPrice();
+  }
 };
 
 const formatNumber = (value) => {
@@ -1132,18 +1301,17 @@ const getSelectedVariantData = () => {
   if (sizeOnlyVariants.value.length > 0 && !hasColors.value) {
     const size = sizeOnlyVariants.value.find(s => s.id == selectedSize.value);
     if (size) {
-      const discountPercent = size.discount_percent || 0;
-      const currentMrp = size.mrp || 0;
-
-      if (discountPercent > 0 && currentMrp > 0) {
-        const originalMrp = currentMrp + (currentMrp * discountPercent / (100 - discountPercent));
-        price = Math.round(originalMrp * 100) / 100;
-        mrp = currentMrp;
-      } else {
-        price = currentMrp;
-        mrp = currentMrp;
+      const discountPercent = parseFloat(size.discount_percent || 0);
+      const currentMrp = parseFloat(size.mrp || 0);
+      let sellingPrice = parseFloat(size.price || 0);
+      if (!sellingPrice || sellingPrice <= 0) {
+        sellingPrice = (discountPercent > 0 && discountPercent < 100)
+          ? (currentMrp - (currentMrp * discountPercent / 100))
+          : currentMrp;
       }
 
+      price = currentMrp;
+      mrp = Math.round(sellingPrice * 100) / 100;
       discount = discountPercent;
       inwardInvoiceId = size.inward_invoice_id || null;
       inwardProductId = size.inward_product_id || null;
@@ -1155,18 +1323,17 @@ const getSelectedVariantData = () => {
   if (hasColors.value) {
     const color = validColorVariants.value.find(c => c.id == selectedColor.value);
     if (color) {
-      const discountPercent = color.discount_percent || 0;
-      const currentMrp = color.mrp || 0;
-
-      if (discountPercent > 0 && currentMrp > 0) {
-        const originalMrp = currentMrp + (currentMrp * discountPercent / (100 - discountPercent));
-        price = Math.round(originalMrp * 100) / 100;
-        mrp = currentMrp;
-      } else {
-        price = currentMrp;
-        mrp = currentMrp;
+      const discountPercent = parseFloat(color.discount_percent || 0);
+      const currentMrp = parseFloat(color.mrp || 0);
+      let sellingPrice = parseFloat(color.price || 0);
+      if (!sellingPrice || sellingPrice <= 0) {
+        sellingPrice = (discountPercent > 0 && discountPercent < 100)
+          ? (currentMrp - (currentMrp * discountPercent / 100))
+          : currentMrp;
       }
 
+      price = currentMrp;
+      mrp = Math.round(sellingPrice * 100) / 100;
       discount = discountPercent;
       inwardInvoiceId = color.inward_invoice_id || null;
       inwardProductId = color.inward_product_id || null;
@@ -1177,16 +1344,15 @@ const getSelectedVariantData = () => {
         if (size) {
           const discountPercent = parseFloat(size.discount_percent || 0);
           const currentMrp = parseFloat(size.mrp || 0);
-
-          if (discountPercent > 0 && currentMrp > 0) {
-            const originalMrp = currentMrp + (currentMrp * discountPercent / (100 - discountPercent));
-            price = Math.round(originalMrp * 100) / 100;
-            mrp = currentMrp;
-          } else {
-            price = currentMrp;
-            mrp = currentMrp;
+          let sellingPrice = parseFloat(size.price || 0);
+          if (!sellingPrice || sellingPrice <= 0) {
+            sellingPrice = (discountPercent > 0 && discountPercent < 100)
+              ? (currentMrp - (currentMrp * discountPercent / 100))
+              : currentMrp;
           }
 
+          price = currentMrp;
+          mrp = Math.round(sellingPrice * 100) / 100;
           discount = discountPercent;
           inwardInvoiceId = size.inward_invoice_id || null;
           inwardProductId = size.inward_product_id || null;
@@ -1208,17 +1374,23 @@ const getSelectedVariantData = () => {
     mrp = parseFloat(inwardData.discount_price) > 0
         ? parseFloat(inwardData.discount_price)
         : parseFloat(inwardData.price);
-    discount = parseFloat(inwardData.discount_price) || 0;
+    discount = parseFloat(inwardData.discount_percent || inwardData.discount_percentage || product.value.discount_percentage || product.value.online_discount_percent || 0);
+    if (!discount && price > 0 && mrp < price) {
+      discount = Math.round(((price - mrp) / price) * 100 * 100) / 100;
+    }
     inwardInvoiceId = inwardData.inward_invoice_id || null;
     inwardProductId = inwardData.inward_product_id || null;
   } else {
     // ✅ Fallback to product price
-    price = product.value.price || 0;  // 350
+    price = parseFloat(product.value.price || 0);  // 350
     // ✅ mrp = discount_price if available, else price
-    mrp = product.value.discount_price > 0
+    mrp = parseFloat(product.value.discount_price > 0
         ? product.value.discount_price
-        : product.value.price || 0;
-    discount = product.value.discount_price || 0;
+        : product.value.price || 0);
+    discount = parseFloat(product.value.discount_percentage || product.value.online_discount_percent || 0);
+    if (!discount && price > 0 && mrp < price) {
+      discount = Math.round(((price - mrp) / price) * 100 * 100) / 100;
+    }
   }
 
   // ✅ If still no inward ID, try from product
@@ -1311,8 +1483,7 @@ watch(route, async () => {
   await nextTick();
   window.scrollTo(0, 0);
   fetchProductDetails();
-  aboutProduct.value = true;
-  review.value = false;
+  selectTab('about');
   formData.value.product_id = route.params.id;
   findProductInCart(route.params.id);
 });
@@ -1428,9 +1599,7 @@ const favoriteAddOrRemove = () => {
 };
 
 const showReview = () => {
-  aboutProduct.value = false;
-  review.value = true;
-  fetchReviews();
+  selectTab('reviews');
 };
 
 const flashSale = ref({});
@@ -1479,8 +1648,11 @@ const fetchProductDetails = async () => {
       onColorChange();
     } else {
       // ✅ Simple product - no variants
-      selectedMrp.value = product.value.price || 0;
-      selectedDiscount.value = product.value.discount_price || 0;
+      selectedMrp.value = parseFloat(product.value.mrp || product.value.price || 0);
+      selectedDiscount.value = parseFloat(product.value.discount_percentage || product.value.online_discount_percent || 0);
+      if (!selectedDiscount.value && selectedMrp.value > 0 && parseFloat(product.value.discount_price || 0) > 0 && parseFloat(product.value.discount_price) < selectedMrp.value) {
+        selectedDiscount.value = Number((((selectedMrp.value - parseFloat(product.value.discount_price)) / selectedMrp.value) * 100).toFixed(2));
+      }
       selectedQty.value = product.value.quantity || 0;
     }
 

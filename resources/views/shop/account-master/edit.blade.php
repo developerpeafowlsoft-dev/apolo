@@ -85,8 +85,15 @@
                                 <x-input type="text" name="agentcommremark" label="Remark" placeholder="Enter Remark" value="{{ old('agentcommremark',$accountMaster->agentcommremark) }}" />
                             </div>
 
-                            <div class="col-md-6 col-lg-12">
+                            <div class="col-md-6 col-lg-8">
                                 <x-input type="text" name="referenceby" label="Reference By" placeholder="Reference By" value="{{ old('referenceby',$accountMaster->referenceby) }}" />
+                            </div>
+
+                            <div class="col-md-6 col-lg-4 d-flex align-items-center mt-3">
+                                <div class="form-check form-switch fs-5 pt-3">
+                                    <input class="form-check-input" type="checkbox" name="is_party_code" id="is_party_code" value="1" {{ old('is_party_code', $accountMaster->is_party_code ? '1' : '0') == '1' ? 'checked' : '' }}>
+                                    <label class="form-check-label fs-6 fw-bold ms-2" for="is_party_code">{{ __('Show as Party Code') }}</label>
+                                </div>
                             </div>
 
                         </div>

@@ -29,6 +29,34 @@ class FinancialStatementService
     {
         $accounts = \App\Models\Account::with(['accountGroup.accountType'])->get();
 
+        // Pre-aggregate instead of querying per account: this loop previously ran
+        // three queries for each of ~490 accounts on every report load.
+        $openingMap = \App\Models\AccountBalance::where('shop_id', $shopId)
+            ->orderBy('id')
+            ->get(['account_id', 'opening_balance'])
+            ->groupBy('account_id')
+            ->map(fn ($g) => (float)$g->first()->opening_balance)
+            ->toArray();
+
+        $entryTotals = DB::table('voucher_entries')
+            ->join('vouchers', 'voucher_entries.voucher_id', '=', 'vouchers.id')
+            ->where('vouchers.shop_id', $shopId)
+            ->where('vouchers.date', '<=', $asOfDate)
+            ->groupBy('voucher_entries.account_id', 'voucher_entries.type')
+            ->selectRaw('voucher_entries.account_id as aid, voucher_entries.type as t, SUM(voucher_entries.amount) as total')
+            ->get();
+
+        $debitMap = [];
+        $creditMap = [];
+        foreach ($entryTotals as $row) {
+            $type = strtolower((string)$row->t);
+            if (in_array($type, ['dr', 'debit'], true)) {
+                $debitMap[(int)$row->aid] = ($debitMap[(int)$row->aid] ?? 0.0) + (float)$row->total;
+            } elseif (in_array($type, ['cr', 'credit'], true)) {
+                $creditMap[(int)$row->aid] = ($creditMap[(int)$row->aid] ?? 0.0) + (float)$row->total;
+            }
+        }
+
         $rows = [];
         $totalOpeningDebit = 0;
         $totalOpeningCredit = 0;
@@ -38,28 +66,12 @@ class FinancialStatementService
         $totalClosingCredit = 0;
 
         foreach ($accounts as $acc) {
-            $opBalModel = \App\Models\AccountBalance::where('shop_id', $shopId)
-                ->where('account_id', $acc->id)
-                ->first();
+            $opening = (float)($openingMap[$acc->id] ?? 0);
+            $opDebit = ($opening > 0) ? $opening : 0;
+            $opCredit = ($opening < 0) ? abs($opening) : 0;
 
-            $opening = (float)($opBalModel?->opening_balance ?? 0);
-            $opType = strtoupper($opBalModel?->balance_type ?? 'DEBIT');
-
-            $opDebit = ($opType === 'DEBIT') ? $opening : 0;
-            $opCredit = ($opType === 'CREDIT') ? $opening : 0;
-
-            // Fetch voucher debit and credit sums using VoucherEntry with Dr/Cr type matching
-            $periodDebit = (float)VoucherEntry::whereHas('voucher', function ($q) use ($shopId, $asOfDate) {
-                $q->where('shop_id', $shopId)->where('date', '<=', $asOfDate);
-            })->where('account_id', $acc->id)
-              ->whereIn('type', ['Dr', 'debit'])
-              ->sum('amount');
-
-            $periodCredit = (float)VoucherEntry::whereHas('voucher', function ($q) use ($shopId, $asOfDate) {
-                $q->where('shop_id', $shopId)->where('date', '<=', $asOfDate);
-            })->where('account_id', $acc->id)
-              ->whereIn('type', ['Cr', 'credit'])
-              ->sum('amount');
+            $periodDebit = (float)($debitMap[$acc->id] ?? 0);
+            $periodCredit = (float)($creditMap[$acc->id] ?? 0);
 
             if ($opDebit == 0 && $opCredit == 0 && $periodDebit == 0 && $periodCredit == 0) {
                 continue;
@@ -184,14 +196,24 @@ class FinancialStatementService
             });
         }
 
-        $ordersInPeriod = $ordersQuery->get();
+        // Eager-load the lines: without this, $ord->products lazy-loads per order
+        // and the cost lookup fired once per line. Harmless while POS sales are
+        // empty, crippling once a full financial year is replayed.
+        $ordersInPeriod = $ordersQuery->with('products')->get();
+
+        $costProductIds = [];
+        foreach ($ordersInPeriod as $ord) {
+            foreach ($ord->products as $p) {
+                $costProductIds[] = $p->id;
+            }
+        }
+        $costMap = $this->inventoryValuationService->getWeightedAverageCostMap($costProductIds);
 
         $cogs = 0.00;
         foreach ($ordersInPeriod as $ord) {
             foreach ($ord->products as $p) {
                 $soldQty = (int)($p->pivot->quantity ?? 1);
-                $avgCost = $this->inventoryValuationService->getWeightedAverageCost($p->id);
-                $cogs += ($soldQty * $avgCost);
+                $cogs += ($soldQty * (float)($costMap[$p->id] ?? 0.00));
             }
         }
 

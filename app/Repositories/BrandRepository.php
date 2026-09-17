@@ -23,12 +23,27 @@ class BrandRepository extends Repository
      */
     public static function storeByRequest(BrandRequest $request): Brand
     {
-        $shop = generaleSetting('rootShop');
+        $shopId = $request->shop_id;
+
+        if (! $shopId) {
+            $user = auth()->user();
+            if ($user && ! $user->hasRole('root')) {
+                $shopId = $user->shop?->id ?? $user->myShop?->id;
+            }
+        }
+
+        if (! $shopId) {
+            // Use existing shop_id from brands table
+            $shopId = Brand::whereNotNull('shop_id')->where('shop_id', '!=', 1)->value('shop_id')
+                ?? Brand::whereNotNull('shop_id')->value('shop_id')
+                ?? generaleSetting('rootShop')?->id;
+        }
 
         $brand = self::create([
             'name' => $request->name,
             'is_active' => true,
-            'shop_id' => $shop->id,
+            'shop_id' => $shopId,
+            'created_by' => auth()->id() ?? 1,
         ]);
 
         // create translation

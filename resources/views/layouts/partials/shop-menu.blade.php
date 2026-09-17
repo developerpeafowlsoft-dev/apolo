@@ -81,14 +81,6 @@
             </span>
         </a>
     </li>
-    <li>
-        <a class="menu {{ request()->routeIs('shop.cashier-report.*') ? 'active' : '' }}" href="{{ route('shop.cashier-report.index') }}">
-            <span>
-                <i class="fa-solid fa-user-check menu-icon text-muted" style="font-size: 16px; margin-right: 12px; width: 18px; text-align: center; display: inline-block;"></i>
-                {{ __('Cashier Performance') }}
-            </span>
-        </a>
-    </li>
 @endhasPermission
 
 @hasPermission('shop.pos.draft')
@@ -162,12 +154,34 @@
     </li>
 @endhasPermission
 
+@hasPermission('shop.openingStock.index')
+    <li>
+        <a class="menu {{ $request->routeIs('shop.openingStock.*') ? 'active' : '' }}" href="{{ route('shop.openingStock.index') }}">
+            <span>
+                <img class="menu-icon" src="{{ asset('assets/icons-admin/inward-product.svg') }}" alt="icon" loading="lazy" />
+                {{ __('Opening Stock') }}
+            </span>
+        </a>
+    </li>
+@endhasPermission
+
 @hasPermission('shop.purchaseProduct.index')
     <li>
         <a class="menu {{ $request->routeIs('shop.purchaseProduct.*') ? 'active' : '' }}" href="{{ route('shop.purchaseProduct.index') }}">
             <span>
                 <img class="menu-icon" src="{{ asset('assets/icons-admin/purchase-product.svg') }}" alt="icon" loading="lazy" />
                 {{ __('Purchases') }}
+            </span>
+        </a>
+    </li>
+@endhasPermission
+
+@hasPermission('shop.supplierDuePayment.index')
+    <li>
+        <a class="menu {{ $request->routeIs('shop.supplierDuePayment.*') ? 'active' : '' }}" href="{{ route('shop.supplierDuePayment.index') }}">
+            <span>
+                <img class="menu-icon" src="{{ asset('assets/icons-admin/account-balance.svg') }}" alt="icon" loading="lazy" />
+                {{ __('Supplier Credit Dues') }}
             </span>
         </a>
     </li>
@@ -292,7 +306,7 @@
 </li>
 
 <li>
-    <a class="menu {{ request()->routeIs('shop.reports.vouchers', 'shop.reports.generalLedger', 'shop.reports.financialStatements', 'shop.reports.purchaseReturns', 'shop.reports.supplierPayments', 'shop.reports.codReconciliation', 'shop.reports.inventoryValuation') ? 'active' : '' }}"
+    <a class="menu {{ request()->routeIs('shop.reports.vouchers', 'shop.reports.generalLedger', 'shop.reports.financialStatements', 'shop.reports.purchaseReturns', 'shop.reports.supplierPayments', 'shop.supplierDuePayment.*', 'shop.reports.codReconciliation', 'shop.reports.inventoryValuation') ? 'active' : '' }}"
         data-bs-toggle="collapse" href="#accountingBooksMenu">
         <span>
             <img class="menu-icon" src="{{ asset('assets/icons-admin/accounting.svg') }}" alt="icon" loading="lazy" />
@@ -300,7 +314,7 @@
         </span>
         <img src="{{ asset('assets/icons-admin/caret-down.svg') }}" alt="" class="downIcon" loading="lazy" />
     </a>
-    <div class="collapse dropdownMenuCollapse {{ request()->routeIs('shop.reports.vouchers', 'shop.reports.generalLedger', 'shop.reports.financialStatements', 'shop.reports.purchaseReturns', 'shop.reports.supplierPayments', 'shop.reports.codReconciliation', 'shop.reports.inventoryValuation') ? 'show' : '' }}" id="accountingBooksMenu">
+    <div class="collapse dropdownMenuCollapse {{ request()->routeIs('shop.reports.vouchers', 'shop.reports.generalLedger', 'shop.reports.financialStatements', 'shop.reports.purchaseReturns', 'shop.reports.supplierPayments', 'shop.supplierDuePayment.*', 'shop.reports.codReconciliation', 'shop.reports.inventoryValuation') ? 'show' : '' }}" id="accountingBooksMenu">
         <div class="listBar">
             <a href="{{ route('shop.reports.vouchers') }}"
                 class="subMenu {{ request()->routeIs('shop.reports.vouchers') ? 'active' : '' }}">
@@ -321,6 +335,10 @@
             <a href="{{ route('shop.reports.supplierPayments') }}"
                 class="subMenu {{ request()->routeIs('shop.reports.supplierPayments') ? 'active' : '' }}">
                 {{ __('Supplier Bill Settlements') }}
+            </a>
+            <a href="{{ route('shop.supplierDuePayment.index') }}"
+                class="subMenu {{ request()->routeIs('shop.supplierDuePayment.*') ? 'active' : '' }}">
+                {{ __('Supplier Credit Dues (Credit Days)') }}
             </a>
             <a href="{{ route('shop.reports.codReconciliation') }}"
                 class="subMenu {{ request()->routeIs('shop.reports.codReconciliation') ? 'active' : '' }}">

@@ -123,6 +123,18 @@
                     </a>
                     @endhasPermission
 
+                    @hasPermission('shop.supplierDuePayment.index')
+                    <a href="{{ route('shop.supplierDuePayment.index') }}" class="command-item d-flex align-items-center px-3 py-2.5 rounded-3 text-decoration-none text-dark my-0.5" data-keywords="supplier credit days due payment pay by bank vendor payable overdue">
+                        <div class="command-icon me-3 text-danger d-flex align-items-center justify-content-center bg-danger-subtle rounded-2" style="width: 34px; height: 34px;">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <span class="fw-semibold d-block text-dark" style="font-size: 13.5px;">{{ __('Supplier Credit Dues') }}</span>
+                            <small class="text-muted" style="font-size: 11.5px;">{{ __('Track credit periods & pay by Bank Master') }}</small>
+                        </div>
+                    </a>
+                    @endhasPermission
+
                     @hasPermission('shop.category.index')
                     <a href="{{ route('shop.category.index') }}" class="command-item d-flex align-items-center px-3 py-2.5 rounded-3 text-decoration-none text-dark my-0.5" data-keywords="categories category department classification">
                         <div class="command-icon me-3 text-warning d-flex align-items-center justify-content-center bg-warning-subtle rounded-2" style="width: 34px; height: 34px;">

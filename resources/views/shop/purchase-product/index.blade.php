@@ -2,18 +2,24 @@
 @section('header-title', __('Purchase Product'))
 @section('content')
     <div>
-        <div>
-            <div class="keyboard-shortcuts-bar bg-white border rounded p-3 mb-4 shadow-sm d-flex align-items-center gap-3 flex-wrap">
-                <span class="text-secondary fw-bold small text-uppercase tracking-wider"><i class="bi bi-keyboard me-1.5"></i>Hot keys:</span>
-                <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <div><kbd>F3</kbd> or <kbd>Alt+V</kbd> <span class="text-muted small">Voucher No</span></div>
-                    <div><kbd>F4</kbd> or <kbd>Alt+C</kbd> <span class="text-muted small">Challan No</span></div>
-                    <div><kbd>F8</kbd> or <kbd>Alt+S</kbd> <span class="text-muted small">Submit Purchase</span></div>
-                    <div><kbd>F9</kbd> <span class="text-muted small">Toggle List/Entry</span></div>
-                    <div><kbd>Enter</kbd> <span class="text-muted small">Move to Next Input</span></div>
-                </div>
+        <div class="purchase-hotkeys-bar d-flex align-items-center justify-content-between px-3 mb-2">
+            <div class="d-flex align-items-center gap-2.5 flex-wrap" style="font-size: 11px; color: #475569;">
+                <span class="text-secondary fw-bold text-uppercase d-flex align-items-center gap-1" style="font-size: 10px; letter-spacing: 0.3px;">
+                    <i class="fa-solid fa-keyboard text-primary"></i> {{ __('HOTKEYS:') }}
+                </span>
+                <span><kbd class="hotkey-kbd">F1</kbd> <span class="text-secondary">Add Row</span></span>
+                <span><kbd class="hotkey-kbd">F3</kbd> / <kbd class="hotkey-kbd">Alt+V</kbd> <span class="text-secondary">Voucher No</span></span>
+                <span><kbd class="hotkey-kbd">F4</kbd> / <kbd class="hotkey-kbd">Alt+C</kbd> <span class="text-secondary">Challan No</span></span>
+                <span><kbd class="hotkey-kbd">F8</kbd> / <kbd class="hotkey-kbd">Alt+S</kbd> <span class="text-secondary">Submit</span></span>
+                <span><kbd class="hotkey-kbd">F9</kbd> <span class="text-secondary">Toggle List</span></span>
+                <span><kbd class="hotkey-kbd">Enter</kbd> <span class="text-secondary">Next Field</span></span>
             </div>
+            <div class="text-muted d-none d-lg-block" style="font-size: 11px;">
+                <span class="text-warning me-1">💡</span>Press <kbd class="hotkey-kbd">F1</kbd> to add row | <kbd class="hotkey-kbd">Enter</kbd> on Voucher No to load inward data
+            </div>
+        </div>
 
+        <div>
             <div class="row">
                 <div class="col-12" id="inwardProductList">
                     @include('shop.purchase-product.partials.purchase-product-table')
@@ -22,7 +28,7 @@
 
                 {{-- Form Code --}}
 
-                <form id="searchForm"
+                <form id="searchForm" onsubmit="return false;"
                       class="d-none align-items-center justify-content-end gap-3 mb-3 border-bottom pb-3 flex-wrap">
                     {{--                <button type="button" class="btn btn-primary" data-bs-toggle="modal"--}}
                     {{--                        data-bs-target="#filterItemMasterModal">--}}
@@ -39,15 +45,6 @@
                     </div>
                 </form>
                 <div class="col-12" id="inwardList">
-                    <!-- Kachi Entry List Active Banner -->
-                    <div id="kachiListBanner" class="alert alert-warning border-warning d-none align-items-center justify-content-between py-2 px-3 mb-2 shadow-sm" style="border-radius: 8px; background-color: #fffbe6; color: #856404; font-weight: 600;">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-warning text-dark px-2 py-1 fs-6" style="letter-spacing: 0.5px;"><i class="bi bi-funnel-fill me-1"></i> {{ __('Kachi Entry List Active') }}</span>
-                            <span>{{ __('Showing ONLY Kachi Entries. Press') }} <kbd class="bg-dark text-white px-1 font-monospace">Alt + K</kbd> {{ __('to switch back to Normal Entries.') }}</span>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-dark text-dark fw-bold" onclick="toggleKachiListFilter()">{{ __('Show Normal Entries') }}</button>
-                    </div>
-
                     @if(isset($inwardLists))
                         @include('shop.purchase-product.partials.purchase-list',['inwardLists' => $inwardLists])
                     @endif
@@ -119,6 +116,10 @@
             </div>
         </div>
     </div>
+
+    @include('shop.components-modal.design-master-modal')
+    @include('shop.components-modal.item-master-modal')
+    @include('shop.components-modal.item-tax-detail-modal')
 @endsection
 @push('css')
     <link rel="stylesheet" href="{{ asset('assets/css/holdon/HoldOn.min.css') }}" type="text/css"/>
@@ -232,92 +233,101 @@
             overflow-x: auto;
         }
 
-        #inwardProductTable {
-            min-width: 1600px;
-            width: 100%;
-            border-collapse: collapse;
+        /* Non-scrolling Compact Table Design */
+        .card.table-responsive,
+        .inwardProductTableCard .table-responsive {
+            overflow-x: hidden !important;
         }
 
-        #purchaseProductTable th,
-        #purchaseProductTable td {
-            white-space: nowrap;
-            vertical-align: middle;
-            text-align: center;
-            padding: 8px 6px;
+        #inwardProductTable {
+            width: 100% !important;
+            min-width: 0 !important;
+            table-layout: fixed !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        #inwardProductTable th,
+        #inwardProductTable td {
+            vertical-align: middle !important;
+            padding: 3px 2px !important;
+            font-size: 11.5px !important;
         }
 
         #inwardProductTable th {
-            background-color: #f8fafc;
-            color: #475569 !important;
             font-weight: 700 !important;
-            font-size: 11.5px !important;
+            color: #475569 !important;
+            background-color: #f8fafc !important;
+            border-top: 1px solid #e2e8f0 !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            text-align: center !important;
+            padding: 5px 2px !important;
+            white-space: nowrap !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.5px !important;
-            border-bottom: 2px solid #e2e8f0 !important;
-            padding: 12px 8px !important;
-        }
-
-        #inwardProductTable td {
-            white-space: nowrap;
-            vertical-align: middle;
-            text-align: center;
-            padding: 8px 6px;
-            border-bottom: 1px solid #f1f5f9 !important;
+            font-size: 10px !important;
+            letter-spacing: 0.2px !important;
         }
 
         #inwardProductTable input.form-control {
-            width: 100%;
-            min-width: 100px;
-            font-size: 13px;
-            border-radius: 6px;
-            border: 1px solid #cbd5e1;
-            padding: 6px 10px;
-            transition: all 0.2s;
+            width: 100% !important;
+            height: 31px !important;
+            min-height: 31px !important;
+            max-height: 31px !important;
+            padding: 2px 4px !important;
+            font-size: 11.5px !important;
+            border-radius: 4px !important;
+            line-height: 1.3 !important;
+            border-color: #cbd5e1 !important;
         }
 
         #inwardProductTable input.form-control:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
         }
 
-        #inwardProductTable th:nth-child(6) {
-            width: 70px;
+        #inwardProductTable tfoot tr.table-total-row th {
+            background-color: #f8fafc !important;
+            border-top: 2px solid #cbd5e1 !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            vertical-align: middle !important;
+            padding: 3px 2px !important;
         }
 
-        #inwardProductTable td:nth-child(6) input {
-            width: 70px;
-            min-width: 70px;
+        #inwardProductTable tfoot tr.table-total-row input.form-control {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            padding: 2px 4px !important;
+            font-size: 11px !important;
+            border-radius: 4px !important;
         }
 
-        #inwardProductTable td:nth-child(1) {
-            width: 50px;
-        }
-
-        #inwardProductTable td:nth-child(2) {
-            min-width: 180px;
-        }
-
-        #inwardProductTable td:nth-child(3) {
-            min-width: 120px;
-        }
-
-        #inwardProductTable td:nth-child(4),
-        #inwardProductTable td:nth-child(5) {
-            min-width: 100px;
-        }
-
-        #inwardProductTable td:nth-child(6),
-        #inwardProductTable td:nth-child(7),
-        #inwardProductTable td:nth-child(8),
-        #inwardProductTable td:nth-child(9),
-        #inwardProductTable td:nth-child(10),
-        #inwardProductTable td:nth-child(11),
-        #inwardProductTable td:nth-child(12),
-        #inwardProductTable td:nth-child(13),
-        #inwardProductTable td:nth-child(14),
-        #inwardProductTable td:nth-child(15) {
-            min-width: 70px;
-        }
+        #inwardProductTable th:nth-child(1),
+        #inwardProductTable td:nth-child(1) { width: 45px !important; min-width: 45px !important; max-width: 45px !important; text-align: center; } /* 1: SL */
+        #inwardProductTable th:nth-child(2),
+        #inwardProductTable td:nth-child(2) { width: 190px !important; min-width: 190px !important; } /* 2: Item */
+        #inwardProductTable td:nth-child(3) { width: 11.0%; min-width: 95px; } /* 3: Design No */
+        #inwardProductTable td:nth-child(4) { width: 6.5%; min-width: 60px; } /* 4: Color */
+        #inwardProductTable td:nth-child(5) { width: 5.0%; min-width: 50px; } /* 5: Size */
+        #inwardProductTable td:nth-child(6) { width: 4.2%; min-width: 45px; } /* 6: Qty */
+        #inwardProductTable td:nth-child(7) { width: 5.8%; min-width: 65px; } /* 7: Purc Rate */
+        #inwardProductTable td:nth-child(8) { width: 5.8%; min-width: 65px; } /* 8: Amount */
+        #inwardProductTable td:nth-child(9) { width: 4.8%; min-width: 50px; } /* 9: Disc (%) */
+        #inwardProductTable td:nth-child(10) { width: 5.2%; min-width: 55px; } /* 10: Disc Amt */
+        #inwardProductTable td:nth-child(11) { width: 5.8%; min-width: 65px; } /* 11: Net PurcRate */
+        #inwardProductTable td:nth-child(12) { width: 5.8%; min-width: 65px; } /* 12: MRP */
+        #inwardProductTable td:nth-child(13) { width: 4.8%; min-width: 50px; } /* 13: Markup (%) */
+        #inwardProductTable td:nth-child(14) { width: 4.8%; min-width: 50px; } /* 14: Markdown (%) */
+        #inwardProductTable td:nth-child(15) { width: 6.5%; min-width: 75px; } /* 15: Tax Code */
+        #inwardProductTable th:nth-child(16),
+        #inwardProductTable td:nth-child(16) { width: 85px !important; min-width: 85px !important; } /* 16: Total GST (%) with (?) */
+        #inwardProductTable th:nth-child(17),
+        #inwardProductTable td:nth-child(17) { width: 45px !important; min-width: 45px !important; max-width: 45px !important; text-align: center; } /* 17: Action */
 
         #inwardList {
             display: none;
@@ -327,60 +337,155 @@
             display: none;
         }
 
-        /* Modern UI Tweaks */
-        .card {
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.025);
-            transition: all 0.25s ease;
-            background: #ffffff;
+        /* Page Top Spacing & Hotkeys Bar matching Image 3 */
+        .app-main .app-main-inner {
+            padding-top: 10px !important;
         }
 
-        .card:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+        .purchase-hotkeys-bar {
+            margin-bottom: 8px !important;
+            padding: 6px 14px !important;
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+            position: static !important;
         }
 
-        .card-header {
-            background-color: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            font-weight: 700 !important;
-            color: #1e293b;
-            padding: 14px 20px;
-            border-top-left-radius: 12px !important;
-            border-top-right-radius: 12px !important;
+        /* Ultra-compact single-line Inward Header */
+        .inwardAccountDetails {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 10px !important;
+            background: #ffffff !important;
+            margin-bottom: 8px !important;
         }
 
-        .form-control, .form-select {
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            padding: 8px 12px;
-            font-size: 13.5px;
-            transition: all 0.2s;
+        .inwardAccountDetails .card-body {
+            padding: 8px 12px !important;
         }
 
-        .form-control:focus, .form-select:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        .inward-header-grid {
+            display: grid;
+            grid-template-columns: minmax(90px, 1fr) minmax(90px, 1fr) minmax(120px, 1.2fr) minmax(90px, 0.9fr) minmax(95px, 1fr) minmax(120px, 1.2fr) minmax(100px, 1fr) minmax(180px, 2fr) minmax(85px, 0.9fr) minmax(85px, 0.9fr);
+            gap: 6px;
+            align-items: flex-end;
         }
 
-        .form-label {
-            font-weight: 600;
-            color: #475569;
-            font-size: 12.5px;
-            margin-bottom: 6px;
+        @media (max-width: 1300px) {
+            .inward-header-grid {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding-bottom: 4px;
+            }
+            .inward-header-grid > div {
+                flex-shrink: 0;
+            }
         }
 
-        /* Keyboard Shortcut Elements */
-        kbd {
-            background-color: #f1f5f9 !important;
-            color: #0f172a !important;
-            border: 1px solid #cbd5e1 !important;
-            border-bottom-width: 2px !important;
-            padding: 2px 6px !important;
-            font-size: 11px !important;
-            font-weight: 700 !important;
+        .inward-header-grid .form-label {
+            font-size: 10.5px !important;
+            font-weight: 600 !important;
+            color: #475569 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.2px !important;
+            margin-bottom: 2px !important;
+            white-space: nowrap !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 2px !important;
+        }
+
+        .inward-header-grid .form-control,
+        .inward-header-grid .form-select {
+            height: 33px !important;
+            min-height: 33px !important;
+            padding: 4px 8px !important;
+            font-size: 12.5px !important;
+            border-radius: 6px !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        .inward-header-grid .select2-container .select2-selection--single {
+            height: 33px !important;
+            padding: 2px 4px !important;
+            font-size: 12.5px !important;
+            border-radius: 6px !important;
+            border-color: #cbd5e1 !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        /* Table Card Spacing */
+        .inwardProductTableCard {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 10px !important;
+            margin-bottom: 8px !important;
+        }
+
+        /* Account & Bill Details Cards Spacing */
+        .accountDetailsFinal {
+            margin-bottom: 8px !important;
+        }
+
+        .accountDetailsFinal .card {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 10px !important;
+            margin-bottom: 0 !important;
+        }
+
+        .accountDetailsFinal .row {
+            --bs-gutter-x: 8px;
+            --bs-gutter-y: 8px;
+        }
+
+        .accountDetailsFinal .select2-container {
+            width: 100% !important;
+            display: block !important;
+        }
+
+        .accountDetailsFinal .select2-container .select2-selection--single {
+            height: 31px !important;
+            min-height: 31px !important;
             border-radius: 4px !important;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.15) !important;
+            border-color: #cbd5e1 !important;
+            display: flex !important;
+            align-items: center !important;
+            padding: 2px 4px !important;
+            font-size: 12px !important;
+            background-color: #ffffff !important;
+            width: 100% !important;
+        }
+
+        .accountDetailsFinal .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 29px !important;
+            padding-left: 6px !important;
+            padding-right: 20px !important;
+            color: #0f172a !important;
+        }
+
+        .accountDetailsFinal .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 29px !important;
+            right: 6px !important;
+        }
+
+        .accountDetailsFinal .form-control,
+        .accountDetailsFinal .form-select {
+            height: 31px !important;
+            min-height: 31px !important;
+            font-size: 12px !important;
+            border-radius: 4px !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        .accountDetailsFinal textarea.form-control {
+            height: auto !important;
+            min-height: 38px !important;
+        }
+
+        .purchase-action-footer {
+            margin-top: 8px !important;
+            margin-bottom: 15px !important;
         }
 
         /* Table Highlight Class */
@@ -402,6 +507,18 @@
             border: 1px solid #dbeafe;
             color: #1e40af;
             font-weight: 700;
+        }
+
+        .hotkey-kbd {
+            background-color: #f8fafc !important;
+            color: #1e293b !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 4px !important;
+            padding: 1.5px 5px !important;
+            font-size: 10.5px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.08) !important;
+            font-family: var(--bs-font-monospace, monospace) !important;
         }
 
     </style>
@@ -457,94 +574,68 @@
 
         let editData = false;
 
-        window.createRow = function () {
-            let sl = $('#inwardProductTable tbody tr').length + 1;
-            let deleteBtn = '';
-            if (editData === false) {
-                if (sl > 1) {
-                    deleteBtn = `
-                        <button type="button" class="btn btn-outline-danger deleteRow">
-                            <img src="{{ asset('assets/icons-admin/trash.svg') }}" alt="trash" loading="lazy">
-                        </button>`;
+        window.createRow = function (force = false) {
+            // Reveal table, detail cards, and submit buttons if currently hidden
+            $('.dataLoadToShow').removeClass('d-none');
+            $('#rowsErrorTd').removeClass('bg-warning-light');
+            $('#rowsErrorContainer').text('');
+
+            // Do not add new row if the current/last row is still blank
+            const $lastRow = $('#inwardProductTable tbody tr:last');
+            if (!force && $lastRow.length > 0) {
+                const itemVal = $lastRow.find('input[name="item[]"]').val() ? $lastRow.find('input[name="item[]"]').val().trim() : '';
+                const itemId = $lastRow.find('input[name="itemid[]"]').val();
+                if (!itemVal && !itemId) {
+                    $lastRow.find('input.item').focus();
+                    return false;
                 }
-            } else {
-                deleteBtn = `
-                        <button type="button" class="btn btn-outline-danger deleteRow">
-                            <img src="{{ asset('assets/icons-admin/trash.svg') }}" alt="trash" loading="lazy">
-                        </button>`;
             }
 
+            let sl = $('#inwardProductTable tbody tr').length + 1;
+            let deleteBtn = `
+                <button type="button" class="btn btn-outline-danger p-0 d-flex align-items-center justify-content-center mx-auto deleteRow" style="width: 22px; height: 22px; border-radius: 4px;">
+                    <i class="fa-solid fa-trash-can" style="font-size: 10.5px;"></i>
+                </button>`;
 
             let row = `
             <tr data-sl="${sl}">
                 <td class="text-center">${sl}</td>
-                <td><input type="text" name="item[]" class="form-control w-auto item"><div class="dropdown-suggestions"></div><input type="hidden" name="itemid[]"><input type="hidden" name="inwardProductId[]"></td>
+                <td><input type="text" name="item[]" class="form-control item" placeholder="Select Item" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off"><input type="hidden" name="itemid[]"><input type="hidden" name="inwardProductId[]"></td>
+                <td><input type="text" name="designNo[]" class="form-control designno text-center" placeholder="Design No" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off"><input type="hidden" name="designid[]"></td>
+                <td class="text-center"><input type="text" name="colorName[]" class="form-control inward-color-input text-center" placeholder="Color" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off"><input type="hidden" name="colorInwardIds[]" class="color-id"></td>
+                <td class="text-center"><input type="text" name="sizeName[]" class="form-control inward-size-input text-center" placeholder="Size" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off"><input type="hidden" name="sizeInwardIds[]" class="size-id"></td>
 
-                <td><input type="text" name="designNo[]" class="form-control w-min designno"><div class="dropdown-designNo"></div><input type="hidden" name="designid[]"></td>
-                <td class="text-start"><select name="colorInwardIds[0][]" class="form-control colorSelectInward row-${sl}" multiple></select></td>
-                <td class="text-start"><select name="sizeInwardIds[0][]" class="form-control sizeSelectInward row-${sl}" multiple></select></td>
-
-                <td><input type="text" name="qty[]" class="form-control qty" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"></td>
-                <td><input type="text" name="purcRate[]" class="form-control buy_price decimal-input"></td>
-                <td><input type="text" name="amount[]" class="form-control price decimal-input"></td>
-                <td><input type="text" name="disc[]" class="form-control discount_percentage decimal-input"></td>
-                <td><input type="text" name="mrp[]" class="form-control disabledCls decimal-input" readonly></td>
-                <td><input type="text" name="mark_up[]" class="form-control disabledCls decimal-input" readonly></td>
-                <td><input type="text" name="mark_down[]" class="form-control disabledCls decimal-input" readonly></td>
-
-                <td><input type="text" name="netPurcRate[]" class="form-control netPurcRate disabledCls decimal-input" readonly></td>
-
-
+                <td><input type="text" name="qty[]" class="form-control qty text-center" value="1" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"></td>
+                <td><input type="text" name="purcRate[]" class="form-control buy_price decimal-input text-end"></td>
+                <td><input type="text" name="amount[]" class="form-control price decimal-input text-end"></td>
+                <td><input type="text" name="disc[]" class="form-control discount_percentage decimal-input text-end"></td>
+                <td><input type="text" name="discAmt[]" class="form-control discount_amount decimal-input text-end"></td>
+                <td><input type="text" name="netPurcRate[]" class="form-control netPurcRate disabledCls decimal-input text-end bg-light" readonly></td>
+                <td><input type="text" name="mrp[]" class="form-control mrp disabledCls decimal-input text-end bg-light" readonly></td>
+                <td><input type="text" name="mark_up[]" class="form-control mark_up disabledCls decimal-input text-end bg-light" readonly></td>
+                <td><input type="text" name="mark_down[]" class="form-control mark_down disabledCls decimal-input text-end bg-light" readonly></td>
 
                 <td class="position-relative">
-    <input type="text" name="taxCode[]" class="form-control taxcode">
-    <div class="dropdown-taxCode"></div>
-    <input type="hidden" name="taxCodeId[]">
-</td>
+                    <input type="text" name="taxCode[]" class="form-control taxcode text-center" placeholder="Tax Code" autocomplete="off">
+                    <div class="dropdown-taxCode"></div>
+                    <input type="hidden" name="taxCodeId[]">
+                </td>
 
-                <td><input type="number" name="sgst[]" class="form-control"><input type="hidden" name="sgstId[]"></td>
+                <td class="text-center p-1">
+                    <div class="position-relative d-inline-flex align-items-center w-100" style="min-width: 76px;">
+                        <input type="text" name="sgst[]" class="form-control sgst text-center disabledCls bg-light" readonly style="padding-right: 26px !important; font-weight: 500;">
+                        <span class="position-absolute end-0 me-1.5 cursor-pointer open-item-tax-modal text-dark d-flex align-items-center justify-content-center" role="button" title="{{ __('View Tax Details') }}" style="cursor: pointer; width: 22px; height: 100%; top: 0; z-index: 2;">
+                            <i class="fa-regular fa-circle-question" style="font-size: 15px; color: #1e293b;"></i>
+                        </span>
+                        <input type="hidden" name="sgstId[]">
+                    </div>
+                </td>
                  <td class="text-center">
                     ${deleteBtn}
                 </td>
             </tr>`;
             $('#inwardProductTable tbody').append(row);
-            // $('#inwardProductTable tbody tr:last').find('input.item').focus();
-
-            $(`.row-${sl}.colorSelectInward`).select2({
-                placeholder: "Select Color",
-                width: '100%',
-                ajax: {
-                    url: "{{ route('shop.designMaster.designDataGet') }}",
-                    delay: 250,
-                    data: function (params) {
-                        return {colorSearch: params.term};
-                    },
-                    processResults: function (data) {
-                        return {
-                            results: data.designWithColorData.map(c => ({id: c.id, text: c.name}))
-                        };
-                    }
-                }
-            });
-
-            // Initialize Size Select2
-            $(`.row-${sl}.sizeSelectInward`).select2({
-                placeholder: "Select Size",
-                width: '100%',
-                ajax: {
-                    url: "{{ route('shop.designMaster.designDataGet') }}",
-                    delay: 250,
-                    data: function (params) {
-                        return {sizeSearch: params.term}; // backend me sizeSearch parameter handle karna
-                    },
-                    processResults: function (data) {
-                        return {
-                            results: data.designWithSizeData.map(s => ({id: s.id, text: s.name}))
-                        };
-                    }
-                }
-            });
-
+            $('#inwardProductTable tbody tr:last').find('input.item').focus();
         }
 
         function fillDayAndTime() {
@@ -627,6 +718,11 @@
             $inwardList.hide();
             $create_record_btn.hide();
 
+            // Auto-focus Voucher No on page load
+            setTimeout(function () {
+                $('input[name="inward_voucher_no"]').focus().select();
+            }, 250);
+
             $list_btn.on('click', function () {
 
                 showCustomLoader();
@@ -650,7 +746,9 @@
                     } else {
                         $create_record_btn.hide();
                     }
-
+                    setTimeout(function () {
+                        $('input[name="inward_voucher_no"]').focus().select();
+                    }, 100);
                 }
                 HoldOn.close();
             });
@@ -709,7 +807,9 @@
             $("#inward_acc_transport").empty().append('<option value="">{{ __("Select a Transport") }}</option>');
             $("#inward_acc_delivery_by").empty().append('<option value="">{{ __("Select a Delivery By") }}</option>');
 
-            $('#kachiLoadedBanner').addClass('d-none').removeClass('d-flex');
+            setTimeout(function () {
+                $('input[name="inward_voucher_no"]').focus().select();
+            }, 100);
         }
     </script>
     {{-- Close --}}
@@ -761,14 +861,6 @@
                         console.log("Response",res)
                         if (res.inwardData){
                             $(".dataLoadToShow").removeClass('d-none')
-
-                            if (res.inwardData.is_kachi == 1 || res.inwardData.is_kachi === true) {
-                                $('#kachiLoadedBanner').removeClass('d-none').addClass('d-flex');
-                                toastr.info("{{ __('Kachi Entry Loaded') }}", "{{ __('Notice') }}");
-                            } else {
-                                $('#kachiLoadedBanner').addClass('d-none').removeClass('d-flex');
-                            }
-
                             // Header Value Set
 
                             $('#inward_invoice_id').val(res.inwardData.id);
@@ -818,18 +910,30 @@
                                 }
                             }
 
-                            $('#inward_party_name').val(res.inwardData.party_code.accountName);
-                            $('#inward_total').val(res.inwardData.inward_total);
-                            $('#inward_party_limit').val(res.inwardData.inward_party_limit);
+                            $('#inward_party_name').val(res.inwardData.party_code ? res.inwardData.party_code.accountName : '');
+                            $('#inward_total').val(parseFloat(res.inwardData.inward_total || 0).toFixed(2));
+                            $('#inward_party_limit').val(parseFloat(res.inwardData.inward_party_limit || 0).toFixed(2));
+
+                            if (res.inwardData.party_code) {
+                                $('#inward_party_state_id').val(res.inwardData.party_code.state_id || '');
+                                $('#inward_party_state_name').val(res.inwardData.party_code.state ? res.inwardData.party_code.state.name : '');
+                            }
 
                             // Table View
 
                             let products = res.inwardData.inward_product;
 
-                             products.forEach((product, index) => {
-                                 createRow();
-                                 fillRowData(product, index + 1); // 👈 row number pass
-                             });
+                             if (Array.isArray(products)) {
+                                 products.forEach((product, index) => {
+                                     createRow(true);
+                                     fillRowData(product, index + 1); // 👈 row number pass
+                                 });
+                             }
+
+                             if (window.calculateNetPurcRateSum) {
+                                 window.calculateNetPurcRateSum();
+                             }
+
                              setTimeout(() => {
                                  $('#inwardProductTable tbody tr:first').find('input[name="qty[]"]').focus().select();
                              }, 300);
@@ -837,10 +941,10 @@
                             // Footer Value Set
                             $('#inward_acc_credit_day').val(res.inwardData.inward_credit_day);
 
-                            if (res.inwardData.inward_acc_purchaser) {
+                            if (res.inwardData.inward_acc_purchaser && res.inwardData.purchaser) {
                                 var purchaserData = {
                                     id: res.inwardData.inward_acc_purchaser,
-                                    text: res.inwardData.purchaser.name + ' - ' + res.inwardData.purchaser.last_name,
+                                    text: (res.inwardData.purchaser.name || '') + ' - ' + (res.inwardData.purchaser.last_name || ''),
                                 };
 
                                 if ($("#inward_acc_purchaser").find("option[value='" + purchaserData.id + "']").length === 0) {
@@ -851,7 +955,7 @@
                                 }
                             }
 
-                            if (res.inwardData.season_id) {
+                            if (res.inwardData.season_id && res.inwardData.season) {
                                 var seasonData = {
                                     id: res.inwardData.season_id,
                                     text: res.inwardData.season.name,
@@ -865,10 +969,10 @@
                                 }
                             }
 
-                            if (res.inwardData.agent_id) {
+                            if (res.inwardData.agent_id && res.inwardData.agent) {
                                 var agentData = {
                                     id: res.inwardData.agent_id,
-                                    text: res.inwardData.agent.code + ' - ' + res.inwardData.agent.name,
+                                    text: (res.inwardData.agent.code || '') + ' - ' + (res.inwardData.agent.name || ''),
                                 };
 
                                 if ($("#inward_acc_agent").find("option[value='" + agentData.id + "']").length === 0) {
@@ -879,7 +983,7 @@
                                 }
                             }
 
-                            if (res.inwardData.transport_id) {
+                            if (res.inwardData.transport_id && res.inwardData.transport) {
                                 var transportData = {
                                     id: res.inwardData.transport_id,
                                     text: res.inwardData.transport.name,
@@ -893,7 +997,7 @@
                                 }
                             }
 
-                            if (res.inwardData.delivery_by_id) {
+                            if (res.inwardData.delivery_by_id && res.inwardData.delivery_by) {
                                 var deliveryByData = {
                                     id: res.inwardData.delivery_by_id,
                                     text: res.inwardData.delivery_by.name,
@@ -907,15 +1011,25 @@
                                 }
                             }
 
-                            $('#inward_acc_lr_no').val(res.inwardData.inward_acc_lr_no);
+                            $('#cash_or_credit').val(res.inwardData.cash_or_credit || 'Credit');
+                            $('#bank_cash_discount_percent').val(parseFloat(res.inwardData.bank_cash_discount_percent || 0).toFixed(2));
+                            $('#inward_acc_lr_no').val(res.inwardData.inward_acc_lr_no || '');
+                            $('#inward_acc_lr_date').val(res.inwardData.inward_acc_lr_date || '');
+                            $('#inward_acc_remark').val(res.inwardData.inward_acc_remark || '');
 
-                            $('#inward_acc_lr_date').val(res.inwardData.inward_acc_lr_date);
+                            $('#bill_discount_percent').val(parseFloat(res.inwardData.bill_discount_percent || 0).toFixed(2));
+                            $('#bill_discount_amount').val(parseFloat(res.inwardData.bill_discount_amount || 0).toFixed(2));
+                            $('#cash_discount_percent').val(parseFloat(res.inwardData.cash_discount_percent || 0).toFixed(2));
+                            $('#cash_discount_amount').val(parseFloat(res.inwardData.cash_discount_amount || 0).toFixed(2));
+                            $('#agent_commission_percent').val(parseFloat(res.inwardData.agent_commission_percent || 0).toFixed(2));
+                            $('#agent_commission_amount').val(parseFloat(res.inwardData.agent_commission_amount || 0).toFixed(2));
+                            $('#expense_amount').val(parseFloat(res.inwardData.expense_amount || 0).toFixed(2));
+                            $('#other_amount').val(parseFloat(res.inwardData.other_amount || 0).toFixed(2));
+                            $('#inward_bill_remark').val(res.inwardData.inward_bill_remark || res.inwardData.bill_remark || '');
 
-                            $('#inward_acc_remark').val(res.inwardData.inward_acc_remark);
-                            $('#inward_acc_gst_amount').val(res.inwardData.inward_acc_gst_amount);
-                            $('#inward_acc_net_amount').val(res.inwardData.inward_acc_net_amount);
-                            $('#inward_acc_freight_amount').val(res.inwardData.inward_acc_freight_amount || '0.00');
-                            $('#inward_acc_parcel_amount').val(res.inwardData.inward_acc_parcel_amount || '0.00');
+                            $('#inward_acc_gst_amount').val(parseFloat(res.inwardData.inward_acc_gst_amount || 0).toFixed(2));
+                            $('#inward_acc_net_amount').val(parseFloat(res.inwardData.inward_acc_net_amount || 0).toFixed(2));
+                            $('#inward_acc_freight_amount').val(parseFloat(res.inwardData.inward_acc_freight_amount || 0).toFixed(2));
                             window.calculateNetPurcRateSum();
                         }else{
                             $(".dataLoadToShow").addClass('d-none')
@@ -934,68 +1048,95 @@
             function fillRowData(product, sl) {
 
                 let $row = $(`#inwardProductTable tbody tr[data-sl="${sl}"]`);
+                if (!$row.length) {
+                    $row = $('#inwardProductTable tbody tr').eq(sl - 1);
+                }
+                if (!$row.length) {
+                    $row = $('#inwardProductTable tbody tr:last');
+                }
 
-                // ---------- BASIC INPUTS ----------
+                let buyPrice = parseFloat(product.buy_price) || 0;
+                let price = parseFloat(product.price) || 0;
+                let disc = parseFloat(product.discount_price) || 0;
+                let discAmt = (buyPrice * disc) / 100;
+                let mrp = parseFloat(product.mrp) || 0;
+                let markUp = parseFloat(product.mark_up) || 0;
+                let markDown = parseFloat(product.mark_down) || 0;
+                let netPurcRate = parseFloat(product.net_purc_rate) || 0;
+
                 $row.find('input[name="inwardProductId[]"]').val(product.id);
                 $row.find('input[name="qty[]"]').val(product.quantity).addClass('disabledCls');
-                $row.find('input[name="purcRate[]"]').val(product.buy_price).addClass('disabledCls');
-                $row.find('input[name="amount[]"]').val(product.price).addClass('disabledCls');
-                $row.find('input[name="disc[]"]').val(product.discount_price).addClass('disabledCls');
-                $row.find('input[name="mrp[]"]').val(product.mrp).addClass('disabledCls');
-                $row.find('input[name="mark_up[]"]').val(product.mark_up).addClass('disabledCls');
-                $row.find('input[name="mark_down[]"]').val(product.mark_down).addClass('disabledCls');
-                $row.find('input[name="netPurcRate[]"]').val(product.net_purc_rate).addClass('disabledCls');
+                $row.find('input[name="purcRate[]"]').val(buyPrice.toFixed(2)).addClass('disabledCls');
+                $row.find('input[name="amount[]"]').val(price.toFixed(2)).addClass('disabledCls');
+                $row.find('input[name="disc[]"]').val(disc.toFixed(2)).addClass('disabledCls');
+                $row.find('input[name="discAmt[]"]').val(discAmt > 0 ? discAmt.toFixed(2) : '0.00').addClass('disabledCls');
+                $row.find('input[name="mrp[]"]').val(mrp > 0 ? mrp.toFixed(2) : '0.00').addClass('disabledCls');
+                $row.find('input[name="mark_up[]"]').val(markUp.toFixed(2)).addClass('disabledCls');
+                $row.find('input[name="mark_down[]"]').val(markDown.toFixed(2)).addClass('disabledCls');
+                $row.find('input[name="netPurcRate[]"]').val(netPurcRate.toFixed(2)).addClass('disabledCls');
 
                 // ---------- ITEM / DESIGN (hidden ids) ----------
-                $row.find('input[name="item[]"]').val(product.products.name).addClass('disabledCls');
+                $row.find('input[name="item[]"]').val(product.products ? product.products.name : '').addClass('disabledCls');
                 $row.find('input[name="itemid[]"]').val(product.product_id);
 
-                $row.find('input[name="designNo[]"]').val(product.design_master.design_number).addClass('disabledCls');
-                $row.find('input[name="designid[]"]').val(product.design_master_id);
+                let designNo = product.design_master?.design_number || product.designMaster?.design_number || '';
+                $row.find('input[name="designNo[]"]').val(designNo).addClass('disabledCls');
+                $row.find('input[name="designid[]"]').val(product.design_master_id || '');
 
                 // ---------- TAX ----------
-                $row.find('input[name="taxCode[]"]').val(product.hsn_master.hsn_code);
-                $row.find('input[name="taxCodeId[]"]').val(product.hsn_master_id);
+                let taxCode = product.hsn_master?.hsn_code || product.hsnMaster?.hsn_code || '';
+                $row.find('input[name="taxCode[]"]').val(taxCode);
+                $row.find('input[name="taxCodeId[]"]').val(product.hsn_master_id || '');
 
                 // ---------- TAX ----------
-                $row.find('input[name="sgst[]"]').val(product.vat_tax.percentage);
-                $row.find('input[name="sgstId[]"]').val(product.vat_tax_id);
+                let sgstVal = (product.vat_tax && product.vat_tax.percentage !== undefined)
+                    ? product.vat_tax.percentage
+                    : ((product.vatTax && product.vatTax.percentage !== undefined) ? product.vatTax.percentage : '');
+                $row.find('input[name="sgst[]"]').val(sgstVal);
+                $row.find('input[name="sgstId[]"]').val(product.vat_tax_id || '');
 
-                // ---------- COLOR SELECT2 ----------
+                // ---------- COLOR ----------
+                let firstColor = product.colors && product.colors.length > 0 ? product.colors[0] : null;
+                if (firstColor) {
+                    $row.find('input[name="colorName[]"]').val(firstColor.name);
+                    $row.find('input[name="colorInwardIds[]"]').val(firstColor.id);
+                } else {
+                    $row.find('input[name="colorName[]"]').val('');
+                    $row.find('input[name="colorInwardIds[]"]').val('');
+                }
+
+                // ---------- SIZE ----------
+                let firstSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : null;
+                if (firstSize) {
+                    $row.find('input[name="sizeName[]"]').val(firstSize.name);
+                    $row.find('input[name="sizeInwardIds[]"]').val(firstSize.id);
+                } else {
+                    $row.find('input[name="sizeName[]"]').val('');
+                    $row.find('input[name="sizeInwardIds[]"]').val('');
+                }
+
+                // ---------- SELECT2 FALLBACK ----------
                 let $colorSelect = $row.find('.colorSelectInward');
+                if ($colorSelect.length > 0) {
+                    $colorSelect.empty();
+                    product.colors.forEach(color => {
+                        $colorSelect.append(new Option(color.name, color.id, true, true));
+                    });
+                    $colorSelect.trigger('change.select2');
+                }
 
-                $colorSelect.empty(); // safety
-
-                product.colors.forEach(color => {
-                    let option = new Option(
-                        color.name,  // text
-                        color.id,    // value
-                        true,        // defaultSelected
-                        true         // selected
-                    );
-
-                    $colorSelect.append(option);
-                });
-
-                $colorSelect.trigger('change.select2');
-
-                // ---------- SIZE SELECT2 ----------
                 let $sizeSelect = $row.find('.sizeSelectInward');
+                if ($sizeSelect.length > 0) {
+                    $sizeSelect.empty();
+                    product.sizes.forEach(size => {
+                        $sizeSelect.append(new Option(size.name, size.id, true, true));
+                    });
+                    $sizeSelect.trigger('change.select2');
+                }
 
-                $sizeSelect.empty();
-
-                product.sizes.forEach(size => {
-                    let option = new Option(
-                        size.name,
-                        size.id,
-                        true,
-                        true
-                    );
-
-                    $sizeSelect.append(option);
-                });
-
-                $sizeSelect.trigger('change.select2');
+                if (typeof window.calculateNetPurcRateSum === 'function') {
+                    window.calculateNetPurcRateSum();
+                }
 
             }
 
@@ -1031,72 +1172,56 @@
             let minutes = now.getMinutes().toString().padStart(2, '0');
             $('#purchase_time').val(hours + ':' + minutes);
         }
+    </script>
 
-        // Kachi Entry List Mode Filter Logic
-        window.isKachiListActive = false;
-
-        window.toggleKachiListFilter = function() {
-            window.isKachiListActive = !window.isKachiListActive;
-
-            const $banner = $('#kachiListBanner');
-
-            if (window.isKachiListActive) {
-                toastr.info("{{ __('Showing Kachi Entries Only') }}", "{{ __('Kachi Entry List Active') }}");
-                $banner.removeClass('d-none').addClass('d-flex');
-            } else {
-                toastr.info("{{ __('Showing Normal Purchase Entries Only') }}", "{{ __('Normal Mode Active') }}");
-                $banner.addClass('d-none').removeClass('d-flex');
-            }
-
-            refreshInwardList();
-        };
-
-        function refreshInwardList() {
-            let isKachiVal = window.isKachiListActive ? 1 : 0;
-            let searchVal = $('#searchForm input[name="search"]').val() || '';
-            loadInwardList("{{ route('shop.purchaseProduct.list') }}", { is_kachi: isKachiVal, search: searchVal });
-        }
-
-        $(document).on('click', '.pagination a, #pagination-links a', function (e) {
-            e.preventDefault();
-            var url = $(this).attr('href');
-            loadInwardList(url);
-        });
-
-        // Common function for loading Purchase List with mode & search parameters
-        function loadInwardList(url, extraData = {}) {
-            let reqData = extraData || {};
-            if (typeof reqData === 'object' && !('is_kachi' in reqData)) {
-                reqData.is_kachi = window.isKachiListActive ? 1 : 0;
-            }
-            if (typeof reqData === 'object' && !('search' in reqData)) {
-                let sVal = $('#searchForm input[name="search"]').val();
-                if (sVal) reqData.search = sVal;
-            }
-
-            $.ajax({
-                url: url,
-                type: 'GET',
-                data: reqData,
-                success: function (response) {
-                    $('#inwardList').html(response);
-                },
-                error: function (xhr) {
-                    console.log('Error:', xhr.responseText);
-                }
-            });
-        }
-
+    <script>
         $(document).ready(function () {
 
             let debounceTimer;
 
+            function executePurchaseSearch(search) {
+                clearTimeout(debounceTimer);
+                $.ajax({
+                    url: "{{ route('shop.purchaseProduct.list') }}",
+                    type: 'GET',
+                    data: {search: search},
+                    beforeSend: function () {
+                        $('#inwardList tbody').html('<tr><td colspan="10" class="text-center">Loading...</td></tr>');
+                    },
+                    success: function (res) {
+                        $('#inwardList').html(res);
+                    },
+                    error: function (err) {
+                        toastr.error('Failed to load data');
+                    }
+                });
+            }
+
+            $(document).on('submit', '#searchForm', function (e) {
+                e.preventDefault();
+                let search = $(this).find('input[name="search"]').val();
+                executePurchaseSearch(search);
+                return false;
+            });
+
+            $(document).on('keydown', '#searchForm input[name="search"]', function (e) {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    e.preventDefault();
+                    let search = $(this).val();
+                    executePurchaseSearch(search);
+                    return false;
+                }
+            });
+
             $(document).on('keyup', '#searchForm input[name="search"]', function (e) {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    return;
+                }
                 clearTimeout(debounceTimer);
                 let search = $(this).val();
 
                 debounceTimer = setTimeout(function () {
-                    loadInwardList("{{ route('shop.purchaseProduct.list') }}", { search: search, is_kachi: window.isKachiListActive ? 1 : 0 });
+                    executePurchaseSearch(search);
                 }, 300); // 300ms delay
             });
         });
@@ -1487,21 +1612,18 @@
 
         // Window Keydown listener for quick shortcuts (F3, F4, F8, F9, Alt keys)
         window.addEventListener('keydown', function (e) {
-            const key = e.key ? e.key.toLowerCase() : '';
-            const code = e.code || '';
-
             // F3 or Alt+V -> Voucher No
-            if (e.key === 'F3' || (e.altKey && (key === 'v' || code === 'KeyV'))) {
+            if (e.key === 'F3' || (e.altKey && (e.key === 'v' || e.key === 'V'))) {
                 e.preventDefault();
                 $('input[name="inward_voucher_no"]').focus().select();
             }
             // F4 or Alt+C -> Challan No
-            if (e.key === 'F4' || (e.altKey && (key === 'c' || code === 'KeyC'))) {
+            if (e.key === 'F4' || (e.altKey && (e.key === 'c' || e.key === 'C'))) {
                 e.preventDefault();
                 $('#inward_challan_no').focus().select();
             }
             // F8 or Alt+S -> Submit Purchase
-            if (e.key === 'F8' || (e.altKey && (key === 's' || code === 'KeyS'))) {
+            if (e.key === 'F8' || (e.altKey && (e.key === 's' || e.key === 'S'))) {
                 e.preventDefault();
                 $('#saveButton').click();
             }
@@ -1509,21 +1631,6 @@
             if (e.key === 'F9') {
                 e.preventDefault();
                 $('#list-btn').click();
-            }
-            // Alt + K -> Kachi List Filter Toggle (when Purchase List is visible)
-            if (e.altKey && (key === 'k' || code === 'KeyK' || e.keyCode === 75)) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                const $inwardList = $("#inwardList");
-                const $inwardProductList = $("#inwardProductList");
-
-                if ($inwardList.is(':visible') || !$inwardProductList.is(':visible')) {
-                    if (typeof window.toggleKachiListFilter === 'function') {
-                        window.toggleKachiListFilter();
-                    }
-                }
-                return false;
             }
         }, { capture: true });
 
@@ -1577,4 +1684,6 @@
         });
 
     </script>
+    @include('shop.components-modal.master-modal.design-master-modal-script')
+    @include('shop.components-modal.master-modal.item-master-modal-script')
 @endpush

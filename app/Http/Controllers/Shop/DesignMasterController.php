@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Shop;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountMaster;
 use App\Models\DesignMaster;
 use Illuminate\Http\Request;
 use App\Http\Requests\DesignMasterRequest;
@@ -12,17 +13,16 @@ class DesignMasterController extends Controller
 {
     public function index(Request $request)
     {
-        $shop = generaleSetting('shop');
-//        $hsnMasters = HsnMaster::basicFields()->with('vattax:id,name,percentage')->paginate(10);
-//        $category = $request->categoryFilter;
-//        $brand = $request->brandFilter;
-//        $color = $request->colorFilter;
+        $rootShop = generaleSetting('rootShop');
+        $currentShop = generaleSetting('shop');
+        $shopIds = array_filter(array_unique([$rootShop?->id, $currentShop?->id, 1, 14]));
         $search = $request->search;
 
-        $designMasters = $shop?->designMasters()
+        $designMasters = DesignMaster::whereIn('shop_id', $shopIds)
             ->when($search, function ($query) use ($search) {
                 $query->where(function($q) use ($search) {
                     $q->where('design_number', 'like', "%$search%")
+                        ->orWhere('account_master_name', 'like', "%$search%")
                         ->orWhereHas('accountMasters', function($q2) use ($search) {
                             $q2->where('accountName', 'like', "%$search%")
                                 ->orWhere('accountshortcode', 'like', "%$search%");
@@ -32,15 +32,16 @@ class DesignMasterController extends Controller
                         });
                 });
             })
-            ->with('products:id,name')->with('accountMasters:id,accountshortcode,accountName')->whereHas('products')->whereHas('accountMasters')->orderByDesc('id')->paginate(20)->withQueryString();
-//        dd($designMasters);
+            ->with(['products:id,name', 'accountMasters:id,accountshortcode,accountName'])
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
 
         if ($request->ajax()) {
             return view('shop.design-master.partials.design-master-table', compact('designMasters'))->render();
         }
 
-
-        return view('shop.design-master.index',compact('designMasters'));
+        return view('shop.design-master.index', compact('designMasters'));
     }
 
     public function modalData(Request $request)
@@ -57,33 +58,68 @@ class DesignMasterController extends Controller
             $query->take(5);
         }
 
-        $itemMasters = $query->get();
+        $itemMasters = $query ? $query->get() : collect();
+
+        $shopIds = array_unique(array_filter([1, 14, $shop?->id, $shopVendor?->id]));
 
         // Dropdown With AccountMaster
+        $queryAccount = AccountMaster::whereIn('shop_id', $shopIds)
+            ->where('is_party_code', 1)
+            ->select('id', 'accountshortcode', 'accountName', 'other_info_act_limit', 'account_id', 'state_id')
+            ->with(['state:id,name'])
+            ->active();
 
-        $queryAccount = $shopVendor?->accountMasters()->select('id', 'accountshortcode', 'accountName','other_info_act_limit')->active()->orderByDesc('id');
-
-        if ($request->has('searchAccountMaster') && $request->searchAccountMaster != '') {
-            $search = $request->searchAccountMaster;
+        if ($request->has('searchAccountMaster') && trim($request->searchAccountMaster) != '') {
+            $search = trim($request->searchAccountMaster);
 
             $queryAccount->where(function($q) use ($search) {
                 $q->where('accountshortcode', 'like', '%' . $search . '%')
-                    ->orWhere('accountName', 'like', '%' . $search . '%');
-            });
+                    ->orWhere('accountName', 'like', '%' . $search . '%')
+                    ->orWhere('cont_info_phone', 'like', '%' . $search . '%')
+                    ->orWhere('cont_info_mobile1', 'like', '%' . $search . '%');
+            })
+            ->orderByRaw("CASE WHEN accountName LIKE ? THEN 0 WHEN accountshortcode = ? THEN 1 ELSE 2 END", ["{$search}%", $search])
+            ->orderBy('accountName')
+            ->limit(100);
         } else {
-            $queryAccount->take(2);
+            $queryAccount->orderBy('accountName')->limit(80);
         }
 
         $accountMasters = $queryAccount->get();
+
+        $allAccIds = $accountMasters->pluck('account_id')->merge($accountMasters->pluck('id'))->filter()->unique()->toArray();
+        $accountBalances = \App\Models\AccountBalance::whereIn('account_id', $allAccIds)->get()->keyBy('account_id');
+        $voucherSums = \App\Models\VoucherEntry::whereIn('account_id', $allAccIds)
+            ->groupBy('account_id')
+            ->selectRaw("account_id, SUM(CASE WHEN type = 'Cr' THEN amount WHEN type = 'Dr' THEN -amount ELSE 0 END) as net")
+            ->pluck('net', 'account_id');
+
+        foreach ($accountMasters as $acc) {
+            $bal = 0.0;
+            if ($acc->account_id && isset($accountBalances[$acc->account_id])) {
+                $bal += (float)$accountBalances[$acc->account_id]->closing_balance;
+            } elseif (isset($accountBalances[$acc->id])) {
+                $bal += (float)$accountBalances[$acc->id]->closing_balance;
+            }
+
+            if ($acc->account_id && isset($voucherSums[$acc->account_id])) {
+                $bal += (float)$voucherSums[$acc->account_id];
+            } elseif (isset($voucherSums[$acc->id])) {
+                $bal += (float)$voucherSums[$acc->id];
+            }
+
+            $acc->payable_amount = number_format(abs($bal), 2, '.', '');
+        }
 
 
         // Dropdown With Employee
         $queryEmployee = $shopVendor?->employee()->select('id', 'name', 'last_name')->orderByDesc('id');
 
         if ($request->has('searchEmployeeName') && $request->searchEmployeeName != '') {
-            $queryEmployee->where(function($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('last_name', 'like', '%' . $search . '%');
+            $searchEmp = trim($request->searchEmployeeName);
+            $queryEmployee->where(function($q) use ($searchEmp) {
+                $q->where('name', 'like', '%' . $searchEmp . '%')
+                    ->orWhere('last_name', 'like', '%' . $searchEmp . '%');
             });
         } else {
             $queryEmployee->take(5);

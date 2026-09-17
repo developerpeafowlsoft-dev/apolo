@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\ShopProfileRequest;
 use App\Repositories\ShopRepository;
+use App\Services\AI\GeminiContentService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
@@ -16,6 +18,7 @@ class ProfileController extends Controller
     public function index()
     {
         $shop = generaleSetting('shop');
+        $shop?->load(['country', 'state', 'city']);
 
         return view('shop.profile.index', compact('shop'));
     }
@@ -26,6 +29,7 @@ class ProfileController extends Controller
     public function edit()
     {
         $shop = generaleSetting('shop');
+        $shop?->load(['country', 'state', 'city']);
 
         return view('shop.profile.edit', compact('shop'));
     }
@@ -69,5 +73,34 @@ class ProfileController extends Controller
         ]);
 
         return back()->withSuccess(__('password change successfully'));
+    }
+
+    /**
+     * Test Google Gemini API Key and Model.
+     */
+    public function testGeminiKey(Request $request, GeminiContentService $geminiService)
+    {
+        $request->validate([
+            'api_key' => ['nullable', 'string'],
+            'model' => ['nullable', 'string'],
+        ]);
+
+        $apiKey = $request->api_key;
+        if (empty($apiKey)) {
+            $shop = generaleSetting('shop');
+            $apiKey = $geminiService->resolveApiKey($shop);
+        }
+
+        if (empty($apiKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Please enter a Google Gemini API Key first.'),
+            ], 422);
+        }
+
+        $model = $request->model ?? 'gemini-1.5-flash';
+        $result = $geminiService->testConnection($apiKey, $model);
+
+        return response()->json($result);
     }
 }

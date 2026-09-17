@@ -24,12 +24,27 @@ class ColorRepository extends Repository
      */
     public static function storeByRequest(ColorRequest $request): Color
     {
-        $shop = generaleSetting('rootShop');
+        $shopId = $request->shop_id;
+
+        if (! $shopId) {
+            $user = auth()->user();
+            if ($user && ! $user->hasRole('root')) {
+                $shopId = $user->shop?->id ?? $user->myShop?->id;
+            }
+        }
+
+        if (! $shopId) {
+            // Use existing shop_id from colors table
+            $shopId = Color::whereNotNull('shop_id')->where('shop_id', '!=', 1)->value('shop_id')
+                ?? Color::whereNotNull('shop_id')->value('shop_id')
+                ?? generaleSetting('rootShop')?->id;
+        }
 
         $color = self::create([
             'name' => $request->name,
             'color_code' => $request->color_code,
-            'shop_id' => $shop->id,
+            'shop_id' => $shopId,
+            'created_by' => auth()->id() ?? 1,
             'is_active' => true,
         ]);
 

@@ -25,14 +25,13 @@ class ItemMasterRequest extends FormRequest
         $id = $this->route('itemMaster')?->id;
         return [
             'name' => 'required|string|max:191',
-            'item_short_name' => 'nullable|string|max:191',
             'category' => 'required|exists:categories,id',
             'sub_category' => 'nullable|array|exists:sub_categories,id',
             'brand_id' => 'required|exists:brands,id',
             'code' => [
                 'required',
                 'numeric',
-                'digits_between:5,25',
+                'digits_between:1,25',
                 Rule::unique('products', 'code')->ignore($id),
             ],
             'color' => 'nullable|array',
@@ -95,9 +94,9 @@ class ItemMasterRequest extends FormRequest
             'brand_id.required' => __('Selected brand is required.'),
             'brand_id.exists' => __('Selected brand is invalid.'),
 
-            'code.required' => __('Barcode code is required.'),
-            'code.numeric' => __('Barcode code must be a number.'),
-            'code.digits_between' => __('Barcode code must be between 5 and 25 digits.'),
+            'code.required' => __('Item No / ID is required.'),
+            'code.numeric' => __('Item No / ID must be a number.'),
+            'code.digits_between' => __('Item No / ID must be between 1 and 25 digits.'),
 
             'color.array' => __('Color must be in array format.'),
 

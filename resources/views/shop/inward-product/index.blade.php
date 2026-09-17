@@ -4,13 +4,17 @@
     <span class="d-inline-flex align-items-center gap-2 mt-1" style="font-size: 11px; color: #64748b;">
         <i class="fa-solid fa-keyboard text-primary"></i>
         <span>Hotkeys:</span>
-        <kbd class="px-1 py-0.5 bg-white text-dark border border-secondary rounded shadow-sm font-monospace fw-bold" style="font-size: 10px; border-color: #cbd5e1 !important;">Alt + I</kbd> Add Item
+        <span class="cursor-pointer" onclick="showCustomLoader('center'); modelItemMasterDataLoad();" style="cursor: pointer;" title="Add Item (Alt + I)">
+            <kbd class="px-1 py-0.5 bg-white text-dark border border-secondary rounded shadow-sm font-monospace fw-bold" style="font-size: 10px; border-color: #cbd5e1 !important;">Alt + I</kbd> Add Item
+        </span>
         <span class="text-muted">|</span>
-        <kbd class="px-1 py-0.5 bg-white text-dark border border-secondary rounded shadow-sm font-monospace fw-bold" style="font-size: 10px; border-color: #cbd5e1 !important;">Alt + D</kbd> Add Design
+        <span class="cursor-pointer" onclick="showCustomLoader('center'); modelDesignMasterDataLoad();" style="cursor: pointer;" title="Add Design (Alt + D)">
+            <kbd class="px-1 py-0.5 bg-white text-dark border border-secondary rounded shadow-sm font-monospace fw-bold" style="font-size: 10px; border-color: #cbd5e1 !important;">Alt + D</kbd> Add Design
+        </span>
         <span class="text-muted">|</span>
-        <kbd class="px-1 py-0.5 bg-white text-dark border border-secondary rounded shadow-sm font-monospace fw-bold" style="font-size: 10px; border-color: #cbd5e1 !important;">F1</kbd> Add Row
-        <span class="text-muted">|</span>
-        <kbd class="px-1 py-0.5 bg-warning text-dark border border-warning rounded shadow-sm font-monospace fw-bold" style="font-size: 10px; cursor: pointer;" id="badgeAltKShortcut" title="{{ __('Toggle Kachi Entry Mode (Alt + K)') }}" onclick="toggleKachiEntryMode()">Alt + K</kbd> <span id="lblKachiHotkeyText" style="cursor: pointer;" onclick="toggleKachiEntryMode()">Kachi Entry</span>
+        <span class="cursor-pointer" onclick="window.createRow(true);" style="cursor: pointer;" title="Add Row (F1)">
+            <kbd class="px-1 py-0.5 bg-white text-dark border border-secondary rounded shadow-sm font-monospace fw-bold" style="font-size: 10px; border-color: #cbd5e1 !important;">F1</kbd> Add Row
+        </span>
     </span>
 @endsection
 @section('content')
@@ -33,7 +37,7 @@
                 <div class="col-12" id="inwardProductList">
                     @include('shop.inward-product.partials.inward-product-table')
                 </div>
-                <form id="searchForm"
+                <form id="searchForm" onsubmit="return false;"
                       class="d-none align-items-center justify-content-end gap-3 mb-3 border-bottom pb-3 flex-wrap">
                     <div class="d-flex align-items-center gap-2">
                         <div class="input-group" style="max-width: 400px">
@@ -101,15 +105,6 @@
                     </div>
                 </form>
                 <div class="col-12" id="inwardList">
-                    <!-- Kachi Entry List Active Banner -->
-                    <div id="kachiListBanner" class="alert alert-warning border-warning d-none align-items-center justify-content-between py-2 px-3 mb-2 shadow-sm" style="border-radius: 8px; background-color: #fffbe6; color: #856404; font-weight: 600;">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-warning text-dark px-2 py-1 fs-6" style="letter-spacing: 0.5px;"><i class="bi bi-funnel-fill me-1"></i> {{ __('Kachi Entry List Active') }}</span>
-                            <span>{{ __('Showing ONLY Kachi Entries. Press') }} <kbd class="bg-dark text-white px-1 font-monospace">Alt + K</kbd> {{ __('to switch back to Normal Entries.') }}</span>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-dark text-dark fw-bold" onclick="toggleKachiListFilter()">{{ __('Show Normal Entries') }}</button>
-                    </div>
-
                     @if(isset($inwardLists))
                         @include('shop.inward-product.partials.inward-list',['inwardLists' => $inwardLists])
                     @endif
@@ -129,6 +124,9 @@
 
     {{-- Design Master Modal Short Key --}}
     @include('shop.components-modal.item-master-modal')
+
+    {{-- Item Tax Detail Modal --}}
+    @include('shop.components-modal.item-tax-detail-modal')
 
     <div class="card shadow border-0 table-floating d-none" id="oldPriceTable">
 
@@ -239,68 +237,99 @@
             overflow-x: auto;
         }
 
+        /* Non-scrolling Compact Table Design */
+        .card.table-responsive,
+        .inwardProductTableCard .table-responsive {
+            overflow-x: hidden !important;
+        }
+
         #inwardProductTable {
-            min-width: 1600px; /* jitni columns hain utna space */
-            width: 100%;
-            border-collapse: collapse;
+            width: 100% !important;
+            min-width: 0 !important;
+            table-layout: fixed !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            margin-bottom: 0 !important;
         }
 
         #inwardProductTable th,
         #inwardProductTable td {
-            white-space: nowrap; /* line break disable */
-            vertical-align: middle;
-            text-align: center;
-            padding: 6px;
+            vertical-align: middle !important;
+            padding: 3px 2px !important;
+            font-size: 11.5px !important;
+        }
+
+        #inwardProductTable th {
+            font-weight: 700 !important;
+            color: #475569 !important;
+            background-color: #f8fafc !important;
+            border-top: 1px solid #e2e8f0 !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            text-align: center !important;
+            padding: 5px 2px !important;
+            white-space: nowrap !important;
+            text-transform: uppercase !important;
+            font-size: 10px !important;
+            letter-spacing: 0.2px !important;
         }
 
         #inwardProductTable input.form-control {
-            width: 100%;
-            min-width: 100px;
-            font-size: 13px;
+            width: 100% !important;
+            height: 31px !important;
+            min-height: 31px !important;
+            max-height: 31px !important;
+            padding: 2px 4px !important;
+            font-size: 11.5px !important;
+            border-radius: 4px !important;
+            line-height: 1.3 !important;
+            border-color: #cbd5e1 !important;
         }
 
-        #inwardProductTable th:nth-child(6) {
-            width: 70px;
+        #inwardProductTable input.form-control:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
         }
 
-        #inwardProductTable td:nth-child(6) input {
-            width: 70px;
-            min-width: 70px;
+        #inwardProductTable tfoot tr.table-total-row th {
+            background-color: #f8fafc !important;
+            border-top: 2px solid #cbd5e1 !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+            vertical-align: middle !important;
+            padding: 3px 2px !important;
         }
 
-        #inwardProductTable td:nth-child(1) {
-            width: 50px;
+        #inwardProductTable tfoot tr.table-total-row input.form-control {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            padding: 2px 4px !important;
+            font-size: 11px !important;
+            border-radius: 4px !important;
         }
 
-        /* SL */
-        #inwardProductTable td:nth-child(2) {
-            min-width: 180px;
-        }
-
-        /* Item */
-        #inwardProductTable td:nth-child(3) {
-            min-width: 120px;
-        }
-
-        /* Design No */
-        #inwardProductTable td:nth-child(4),
-        #inwardProductTable td:nth-child(5) {
-            min-width: 100px;
-        }
-
-        /* Color/Size */
-        #inwardProductTable td:nth-child(6),
-        #inwardProductTable td:nth-child(7),
-        #inwardProductTable td:nth-child(8),
-        #inwardProductTable td:nth-child(9),
-        #inwardProductTable td:nth-child(10),
-        #inwardProductTable td:nth-child(11),
-        #inwardProductTable td:nth-child(12),
-        #inwardProductTable td:nth-child(13),
-        #inwardProductTable td:nth-child(14),
-        #inwardProductTable td:nth-child(15) {
-            min-width: 70px;
-        }
+        #inwardProductTable td:nth-child(1) { width: 45px !important; min-width: 45px !important; max-width: 45px !important; text-align: center; } /* 1: SL */
+        #inwardProductTable td:nth-child(2) { width: 190px !important; min-width: 190px !important; } /* 2: Item */
+        #inwardProductTable td:nth-child(3) { width: 11.0%; min-width: 95px; } /* 3: Design No */
+        #inwardProductTable td:nth-child(4) { width: 6.5%; min-width: 60px; } /* 4: Color */
+        #inwardProductTable td:nth-child(5) { width: 5.0%; min-width: 50px; } /* 5: Size */
+        #inwardProductTable td:nth-child(6) { width: 4.2%; min-width: 45px; } /* 6: Qty */
+        #inwardProductTable td:nth-child(7) { width: 5.8%; min-width: 65px; } /* 7: Purc Rate */
+        #inwardProductTable td:nth-child(8) { width: 5.8%; min-width: 65px; } /* 8: Amount */
+        #inwardProductTable td:nth-child(9) { width: 4.8%; min-width: 50px; } /* 9: Disc (%) */
+        #inwardProductTable td:nth-child(10) { width: 5.2%; min-width: 55px; } /* 10: Disc Amt */
+        #inwardProductTable td:nth-child(11) { width: 5.8%; min-width: 65px; } /* 11: Net PurcRate */
+        #inwardProductTable td:nth-child(12) { width: 5.8%; min-width: 65px; } /* 12: MRP */
+        #inwardProductTable td:nth-child(13) { width: 4.8%; min-width: 50px; } /* 13: Markup (%) */
+        #inwardProductTable td:nth-child(14) { width: 4.8%; min-width: 50px; } /* 14: Markdown (%) */
+        #inwardProductTable td:nth-child(15) { width: 6.5%; min-width: 75px; } /* 15: Tax Code */
+        #inwardProductTable th:nth-child(16),
+        #inwardProductTable td:nth-child(16) { width: 85px !important; min-width: 85px !important; } /* 16: Total GST (%) with (?) */
+        #inwardProductTable th:nth-child(17),
+        #inwardProductTable td:nth-child(17) { width: 45px !important; min-width: 45px !important; max-width: 45px !important; text-align: center; } /* 17: Delete Action */
 
         #inwardList {
             display: none;
@@ -310,6 +339,119 @@
             display: none;
         }
 
+        /* Ultra-compact single-line Inward Header */
+        .inwardAccountDetails {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 10px !important;
+            background: #ffffff !important;
+            margin-bottom: 8px !important;
+        }
+
+        .inwardAccountDetails .card-body {
+            padding: 8px 12px !important;
+        }
+
+        .inward-header-grid {
+            display: grid;
+            grid-template-columns: minmax(85px, 0.9fr) minmax(95px, 1fr) minmax(115px, 1.2fr) minmax(85px, 0.9fr) minmax(95px, 1fr) minmax(95px, 1fr) minmax(115px, 1.2fr) minmax(110px, 1.1fr) minmax(170px, 2fr) minmax(85px, 0.9fr) minmax(85px, 0.9fr);
+            gap: 6px;
+            align-items: flex-end;
+        }
+
+        @media (max-width: 1300px) {
+            .inward-header-grid {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding-bottom: 4px;
+            }
+            .inward-header-grid > div {
+                flex-shrink: 0;
+            }
+        }
+
+        .inward-header-grid .form-label {
+            font-size: 10.5px !important;
+            font-weight: 600 !important;
+            color: #475569 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.2px !important;
+            margin-bottom: 2px !important;
+            white-space: nowrap !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 2px !important;
+        }
+
+        .inward-header-grid .form-control,
+        .inward-header-grid .form-select {
+            height: 33px !important;
+            min-height: 33px !important;
+            padding: 4px 8px !important;
+            font-size: 12.5px !important;
+            border-radius: 6px !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        .inward-header-grid .select2-container .select2-selection--single {
+            height: 33px !important;
+            padding: 2px 4px !important;
+            font-size: 12.5px !important;
+            border-radius: 6px !important;
+            border-color: #cbd5e1 !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .inward-header-grid .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 29px !important;
+            padding-left: 4px !important;
+        }
+
+        /* Account & Bill Details Select2 & Controls full-width styling */
+        .accountDetailsFinal .select2-container {
+            width: 100% !important;
+            display: block !important;
+        }
+
+        .accountDetailsFinal .select2-container .select2-selection--single {
+            height: 31px !important;
+            min-height: 31px !important;
+            border-radius: 4px !important;
+            border-color: #cbd5e1 !important;
+            display: flex !important;
+            align-items: center !important;
+            padding: 2px 4px !important;
+            font-size: 12px !important;
+            background-color: #ffffff !important;
+            width: 100% !important;
+        }
+
+        .accountDetailsFinal .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 29px !important;
+            padding-left: 6px !important;
+            padding-right: 20px !important;
+            color: #0f172a !important;
+        }
+
+        .accountDetailsFinal .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 29px !important;
+            right: 6px !important;
+        }
+
+        .accountDetailsFinal .form-control,
+        .accountDetailsFinal .form-select {
+            height: 31px !important;
+            min-height: 31px !important;
+            font-size: 12px !important;
+            border-radius: 4px !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        .accountDetailsFinal textarea.form-control {
+            height: auto !important;
+            min-height: 38px !important;
+        }
     </style>
     <style>
         #inwardProductList table tr:not(:first-child):not(.ui-datepicker-calendar tr) {
@@ -358,7 +500,26 @@
                 handle: ".card-header"
             });
 
-            // Alt + I (Item), Alt + D (Design), Alt + K (Kachi Entry) shortcut listeners - Capture Phase
+            // Helper to get currently selected Inward Party context (ID, Code, Name) for Design Master modal
+            window.getInwardPartyContext = function () {
+                const partyId = $('#inward_party_code').val();
+                let partyCode = $('#inward_party_code_display').val();
+                if (!partyCode && $('#inward_party_code option:selected').val()) {
+                    partyCode = $('#inward_party_code option:selected').text();
+                }
+                const partyName = $('#inward_party_name').val() || '';
+
+                if (partyId && partyName) {
+                    return {
+                        id: partyId,
+                        code: (partyCode || '').trim(),
+                        name: partyName.trim()
+                    };
+                }
+                return null;
+            };
+
+            // Alt + I (Open Item Master) & Alt + D (Open Design Master) shortcut listeners - Capture Phase to prevent character insertion on macOS/Windows
             window.addEventListener('keydown', function(e) {
                 const key = e.key ? e.key.toLowerCase() : '';
                 const code = e.code || '';
@@ -367,6 +528,12 @@
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
+                    if ($('#inwardItemSpotlightModal').hasClass('show')) {
+                        $('#inwardItemSpotlightModal').modal('hide');
+                    }
+                    if ($('#inwardPartySpotlightModal').hasClass('show')) {
+                        $('#inwardPartySpotlightModal').modal('hide');
+                    }
                     showCustomLoader('center');
                     modelItemMasterDataLoad();
                     return false;
@@ -375,128 +542,47 @@
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
+                    if ($('#inwardItemSpotlightModal').hasClass('show')) {
+                        $('#inwardItemSpotlightModal').modal('hide');
+                    }
+                    if ($('#inwardPartySpotlightModal').hasClass('show')) {
+                        $('#inwardPartySpotlightModal').modal('hide');
+                    }
                     showCustomLoader('center');
                     modelDesignMasterDataLoad();
                     return false;
                 }
-                if (e.altKey && (code === 'KeyK' || key === 'k' || e.keyCode === 75)) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-
-                    const $inwardList = $("#inwardList");
-                    const $inwardProductList = $("#inwardProductList");
-
-                    if ($inwardList.is(':visible') || !$inwardProductList.is(':visible')) {
-                        if (typeof window.toggleKachiListFilter === 'function') {
-                            window.toggleKachiListFilter();
-                        }
-                    } else {
-                        if (typeof window.toggleKachiEntryMode === 'function') {
-                            window.toggleKachiEntryMode();
-                        }
-                    }
-                    return false;
-                }
             }, { capture: true, passive: false });
         });
-
-        // Kachi Entry Mode Toggle & Sequence Logic
-        window.isKachiModeActive = false;
-        let lastKachiToggleTime = 0;
-
-        window.fetchNextKachiSequence = function() {
-            $.ajax({
-                url: "{{ route('shop.inwardProduct.nextKachiSequence') }}",
-                type: 'GET',
-                success: function(res) {
-                    if (res.status && res.sequence) {
-                        if (window.isKachiModeActive) {
-                            $('#inward_voucher_no').val(res.sequence);
-                            $('#inward_challan_no').val(res.sequence);
-                        }
-                    }
-                },
-                error: function(err) {
-                    console.error('Error fetching Kachi sequence:', err);
-                }
-            });
-        };
-
-        window.toggleKachiEntryMode = function() {
-            window.isKachiModeActive = !window.isKachiModeActive;
-            lastKachiToggleTime = Date.now();
-
-            const $banner = $('#kachiEntryBanner');
-            const $submitBtn = $('#saveButton');
-
-            if (window.isKachiModeActive) {
-                toastr.info("{{ __('This is a Kachi Entry form.') }}", "{{ __('Kachi Entry Mode') }}");
-                $banner.removeClass('d-none').addClass('d-flex');
-                if ($submitBtn.length) {
-                    $submitBtn.removeClass('btn-primary').addClass('btn-warning text-dark fw-bold')
-                              .html('<i class="bi bi-file-earmark-diff me-1"></i> {{ __("Save Kachi Entry") }}');
-                }
-                window.fetchNextKachiSequence();
-            } else {
-                toastr.info("{{ __('Kachi Entry Mode Disabled. Normal Inward Entry Mode Active.') }}", "{{ __('Normal Mode') }}");
-                $banner.addClass('d-none').removeClass('d-flex');
-                if ($submitBtn.length) {
-                    $submitBtn.removeClass('btn-warning text-dark fw-bold').addClass('btn-primary')
-                              .html('{{ __("Submit") }}');
-                }
-                // Requirement 5 & 13: Clear ONLY Voucher No and Challan No when Kachi Mode is turned OFF
-                $('#inward_voucher_no').val('');
-                $('#inward_challan_no').val('');
-            }
-        };
-
-        // Kachi Entry List Mode Filter Logic
-        window.isKachiListActive = false;
-
-        window.toggleKachiListFilter = function() {
-            window.isKachiListActive = !window.isKachiListActive;
-            lastKachiToggleTime = Date.now();
-
-            const $banner = $('#kachiListBanner');
-
-            if (window.isKachiListActive) {
-                toastr.info("{{ __('Showing Kachi Entries Only') }}", "{{ __('Kachi Entry List Active') }}");
-                $banner.removeClass('d-none').addClass('d-flex');
-            } else {
-                toastr.info("{{ __('Showing Normal Inward Entries Only') }}", "{{ __('Normal Mode Active') }}");
-                $banner.addClass('d-none').removeClass('d-flex');
-            }
-
-            refreshInwardList();
-        };
-
-        window.addEventListener('keyup', function(e) {
-            const key = e.key ? e.key.toLowerCase() : '';
-            const code = e.code || '';
-            if ((code === 'KeyK' || key === 'k' || e.keyCode === 75) && (Date.now() - lastKachiToggleTime < 500)) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        }, { capture: true, passive: false });
         // New Code
 
         let editData = false;
 
-        window.createRow = function () {
+        window.createRow = function (force = false) {
+            // Do not add new row if the current/last row is still blank
+            const $lastRow = $('#inwardProductTable tbody tr:last');
+            if (!force && $lastRow.length > 0) {
+                const itemVal = $lastRow.find('input[name="item[]"]').val() ? $lastRow.find('input[name="item[]"]').val().trim() : '';
+                const itemId = $lastRow.find('input[name="itemid[]"]').val();
+                if (!itemVal && !itemId) {
+                    $lastRow.find('input.item').focus();
+                    return false;
+                }
+            }
+
             let sl = $('#inwardProductTable tbody tr').length + 1;
             let deleteBtn = '';
             if (editData === false) {
                 if (sl > 1) {
                     deleteBtn = `
-                        <button type="button" class="btn btn-outline-danger deleteRow">
-                            <img src="{{ asset('assets/icons-admin/trash.svg') }}" alt="trash" loading="lazy">
+                        <button type="button" class="btn btn-outline-danger p-0 d-flex align-items-center justify-content-center mx-auto deleteRow" style="width: 22px; height: 22px; border-radius: 4px;">
+                            <i class="fa-solid fa-trash-can" style="font-size: 10.5px;"></i>
                         </button>`;
                 }
             } else {
                 deleteBtn = `
-                        <button type="button" class="btn btn-outline-danger deleteRow">
-                            <img src="{{ asset('assets/icons-admin/trash.svg') }}" alt="trash" loading="lazy">
+                        <button type="button" class="btn btn-outline-danger p-0 d-flex align-items-center justify-content-center mx-auto deleteRow" style="width: 22px; height: 22px; border-radius: 4px;">
+                            <i class="fa-solid fa-trash-can" style="font-size: 10.5px;"></i>
                         </button>`;
             }
 
@@ -504,73 +590,44 @@
             let row = `
             <tr data-sl="${sl}">
                 <td class="text-center">${sl}</td>
-                <td><input type="text" name="item[]" class="form-control w-auto item"><div class="dropdown-suggestions"></div><input type="hidden" name="itemid[]"><input type="hidden" name="inwardProductId[]"></td>
+                <td><input type="text" name="item[]" class="form-control item" placeholder="Select Item" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off"><input type="hidden" name="itemid[]"><input type="hidden" name="inwardProductId[]"></td>
 
-                <td><input type="text" name="designNo[]" class="form-control w-min designno"><div class="dropdown-designNo"></div><input type="hidden" name="designid[]"></td>
-                <td class="text-start"><select name="colorInwardIds[0][]" class="form-control colorSelectInward row-${sl}" multiple></select></td>
-                <td class="text-start"><select name="sizeInwardIds[0][]" class="form-control sizeSelectInward row-${sl}" multiple></select></td>
+                <td><input type="text" name="designNo[]" class="form-control designno" placeholder="Design No" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off"><input type="hidden" name="designid[]"></td>
+                <td class="text-center"><input type="text" name="colorName[]" class="form-control inward-color-input text-center" placeholder="Color" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off"><input type="hidden" name="colorInwardIds[]" class="color-id"></td>
+                <td class="text-center"><input type="text" name="sizeName[]" class="form-control inward-size-input text-center" placeholder="Size" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off"><input type="hidden" name="sizeInwardIds[]" class="size-id"></td>
 
-                <td><input type="text" name="qty[]" class="form-control qty" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"></td>
-                <td><input type="text" name="purcRate[]" class="form-control buy_price decimal-input"></td>
-                <td><input type="text" name="amount[]" class="form-control price decimal-input"></td>
-                <td><input type="text" name="disc[]" class="form-control discount_percentage decimal-input"></td>
-                <td><input type="text" name="mrp[]" class="form-control disabledCls decimal-input" readonly></td>
-                <td><input type="text" name="mark_up[]" class="form-control disabledCls decimal-input" readonly></td>
-                <td><input type="text" name="mark_down[]" class="form-control disabledCls decimal-input" readonly></td>
-
-                <td><input type="text" name="netPurcRate[]" class="form-control netPurcRate disabledCls decimal-input" readonly></td>
-
-
+                <td><input type="text" name="qty[]" class="form-control qty text-center" value="1" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"></td>
+                <td><input type="text" name="purcRate[]" class="form-control buy_price decimal-input text-end"></td>
+                <td><input type="text" name="amount[]" class="form-control price decimal-input text-end"></td>
+                <td><input type="text" name="disc[]" class="form-control discount_percentage decimal-input text-end"></td>
+                <td><input type="text" name="discAmt[]" class="form-control discount_amount decimal-input text-end"></td>
+                <td><input type="text" name="netPurcPrice[]" class="form-control netPurcPrice disabledCls decimal-input text-end bg-light" readonly></td>
+                <td><input type="text" name="mrp[]" class="form-control mrp disabledCls decimal-input text-end bg-light" readonly></td>
+                <td><input type="text" name="mark_up[]" class="form-control mark_up disabledCls decimal-input text-end bg-light" readonly></td>
+                <td><input type="text" name="mark_down[]" class="form-control mark_down disabledCls decimal-input text-end bg-light" readonly></td>
+                <input type="hidden" name="netPurcRate[]" class="netPurcRate">
 
                 <td class="position-relative">
-    <input type="text" name="taxCode[]" class="form-control taxcode">
-    <div class="dropdown-taxCode"></div>
-    <input type="hidden" name="taxCodeId[]">
-</td>
+                    <input type="text" name="taxCode[]" class="form-control taxcode" placeholder="Tax Code">
+                    <div class="dropdown-taxCode"></div>
+                    <input type="hidden" name="taxCodeId[]">
+                </td>
 
-                <td><input type="number" name="sgst[]" class="form-control"><input type="hidden" name="sgstId[]"></td>
+                <td class="text-center p-1">
+                    <div class="position-relative d-inline-flex align-items-center w-100" style="min-width: 76px;">
+                        <input type="text" name="sgst[]" class="form-control sgst text-center disabledCls bg-light" readonly style="padding-right: 26px !important; font-weight: 500;">
+                        <span class="position-absolute end-0 me-1.5 cursor-pointer open-item-tax-modal text-dark d-flex align-items-center justify-content-center" role="button" title="{{ __('View Tax Details') }}" style="cursor: pointer; width: 22px; height: 100%; top: 0; z-index: 2;">
+                            <i class="fa-regular fa-circle-question" style="font-size: 15px; color: #1e293b;"></i>
+                        </span>
+                        <input type="hidden" name="sgstId[]">
+                    </div>
+                </td>
                  <td class="text-center">
                     ${deleteBtn}
                 </td>
             </tr>`;
             $('#inwardProductTable tbody').append(row);
             $('#inwardProductTable tbody tr:last').find('input.item').focus();
-
-            $(`.row-${sl}.colorSelectInward`).select2({
-                placeholder: "Select Color",
-                width: '100%',
-                ajax: {
-                    url: "{{ route('shop.designMaster.designDataGet') }}",
-                    delay: 250,
-                    data: function (params) {
-                        return {colorSearch: params.term};
-                    },
-                    processResults: function (data) {
-                        return {
-                            results: data.designWithColorData.map(c => ({id: c.id, text: c.name}))
-                        };
-                    }
-                }
-            });
-
-            // Initialize Size Select2
-            $(`.row-${sl}.sizeSelectInward`).select2({
-                placeholder: "Select Size",
-                width: '100%',
-                ajax: {
-                    url: "{{ route('shop.designMaster.designDataGet') }}",
-                    delay: 250,
-                    data: function (params) {
-                        return {sizeSearch: params.term}; // backend me sizeSearch parameter handle karna
-                    },
-                    processResults: function (data) {
-                        return {
-                            results: data.designWithSizeData.map(s => ({id: s.id, text: s.name}))
-                        };
-                    }
-                }
-            });
-
         }
 
         function fillDayAndTime() {
@@ -671,6 +728,11 @@
 
             const $create_record_btn = $("#create-record-btn");
 
+            // Default focus on Voucher No input on page load
+            setTimeout(function () {
+                $('#inward_voucher_no').focus().select();
+            }, 300);
+
             $create_record_btn.on('click', function () {
                 editData = false;
                 $('#saveButton').show();
@@ -678,6 +740,9 @@
                 clearValidationBorders();
                 $create_record_btn.hide();
                 resetFormInward();
+                setTimeout(function () {
+                    $('#inward_voucher_no').focus().select();
+                }, 150);
             });
 
 
@@ -688,18 +753,17 @@
             $list_btn.on('click', function () {
                 $('#saveButton').show();
                 $('#alertBoxPurchase').removeClass('alert alert-danger').text('');
-                showCustomLoader();
                 $inwardProductList.toggle();
                 $inwardList.toggle();
 
                 if ($inwardList.is(":visible")) {
-                    refreshInwardList()
+                    showCustomLoader('center');
+                    refreshInwardList();
                     $list_btn.text('Back');
                     $create_btn.hide();
                     $create_record_btn.hide();
                     $searchForm.removeClass('d-none').addClass('d-flex')[0].reset();
-                    oldPriceTableClear()
-
+                    oldPriceTableClear();
                 } else {
                     $list_btn.text('Inward List');
                     $create_btn.show();
@@ -709,9 +773,8 @@
                     } else {
                         $create_record_btn.hide();
                     }
-
+                    HoldOn.close();
                 }
-                HoldOn.close();
             });
 
         });
@@ -753,10 +816,8 @@
                 }
             } else {
                 toastr.error("Failed to load item data.");
+                HoldOn.close();
             }
-
-
-            HoldOn.close();
         });
 
         function resetFormInward() {
@@ -767,9 +828,11 @@
 
             // Top Data
 
-            $("#day_book_id").val($("#day_book_id option:first").val()).trigger('change');
-            $("#inward_vat_tax_id").val($("#inward_vat_tax_id option:first").val()).trigger('change');
-            $("#inward_party_code").empty().append('<option value="">{{ __("Select Account Master") }}</option>');
+            $("#day_book_id").val("{{ $dayBooks->first()?->id ?? 1 }}");
+            $("#inward_party_code_display").val('');
+            $("#inward_party_code").empty();
+            $("#inward_party_name").val('');
+            $("#inward_party_limit").val('0.00');
 
             // Row
             $('#inwardProductTable tbody').html('');
@@ -781,21 +844,117 @@
             $("#inward_acc_agent").empty().append('<option value="">{{ __("Select a Agent") }}</option>');
             $("#inward_acc_transport").empty().append('<option value="">{{ __("Select a Transport") }}</option>');
             $("#inward_acc_delivery_by").empty().append('<option value="">{{ __("Select a Delivery By") }}</option>');
+            $("#inward_acc_remark").val('');
+            $("#inward_bill_remark").val('');
 
-            if (window.isKachiModeActive) {
-                // If Kachi mode is active when form resets (e.g. after successful save), fetch the next sequence number for the next Kachi entry (Requirement 9)
-                window.fetchNextKachiSequence();
-            } else {
-                $('#inward_voucher_no').val('');
-                $('#inward_challan_no').val('');
-            }
+            setTimeout(function () {
+                $('#inward_voucher_no').focus().select();
+            }, 100);
+        }
+
+        function buildInwardRowHtml(product, sl) {
+            let buyPrice = parseFloat(product.buy_price) || 0;
+            let price = parseFloat(product.price) || 0;
+            let disc = parseFloat(product.discount_price) || 0;
+            let discAmt = (buyPrice * disc) / 100;
+            let netPurc = (product.net_purc_price !== null && product.net_purc_price !== undefined) ? parseFloat(product.net_purc_price) : (buyPrice - discAmt);
+            let mrp = parseFloat(product.mrp) || 0;
+            let markUp = parseFloat(product.mark_up) || 0;
+            let markDown = parseFloat(product.mark_down) || 0;
+            let netPurcRate = parseFloat(product.net_purc_rate) || 0;
+
+            let itemName = product.products ? (product.products.name || '') : '';
+            let itemId = product.product_id || '';
+            let inwardProductId = product.id || '';
+
+            let designNo = product.design_master?.design_number || product.designMaster?.design_number || '';
+            let designId = product.design_master_id || '';
+            let designDisabledCls = designNo ? ' disabledCls' : '';
+
+            let firstColor = product.colors && product.colors.length > 0 ? product.colors[0] : null;
+            let colorName = firstColor ? (firstColor.name || '') : '';
+            let colorId = firstColor ? (firstColor.id || '') : '';
+
+            let firstSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : null;
+            let sizeName = firstSize ? (firstSize.name || '') : '';
+            let sizeId = firstSize ? (firstSize.id || '') : '';
+
+            let taxCode = product.hsn_master?.hsn_code || product.hsnMaster?.hsn_code || '';
+            let taxCodeId = product.hsn_master_id || '';
+
+            let sgstVal = (product.vat_tax && product.vat_tax.percentage !== undefined)
+                ? product.vat_tax.percentage
+                : ((product.vatTax && product.vatTax.percentage !== undefined) ? product.vatTax.percentage : '');
+            let sgstId = product.vat_tax_id || '';
+
+            let qtyVal = (product.quantity !== null && product.quantity !== undefined) ? product.quantity : 1;
+            let purcRateStr = buyPrice.toFixed(2);
+            let priceStr = price.toFixed(2);
+            let discStr = disc.toFixed(2);
+            let discAmtStr = discAmt > 0 ? discAmt.toFixed(2) : '0.00';
+            let netPurcStr = netPurc > 0 ? netPurc.toFixed(2) : (buyPrice > 0 ? buyPrice.toFixed(2) : '0.00');
+            let mrpStr = mrp > 0 ? mrp.toFixed(2) : '0.00';
+            let markUpStr = markUp.toFixed(2);
+            let markDownStr = markDown.toFixed(2);
+            let netPurcRateStr = netPurcRate.toFixed(2);
+
+            let deleteBtn = `
+                <button type="button" class="btn btn-outline-danger p-0 d-flex align-items-center justify-content-center mx-auto deleteRow" style="width: 22px; height: 22px; border-radius: 4px;">
+                    <i class="fa-solid fa-trash-can" style="font-size: 10.5px;"></i>
+                </button>`;
+
+            return `
+            <tr data-sl="${sl}">
+                <td class="text-center">${sl}</td>
+                <td><input type="text" name="item[]" class="form-control item disabledCls" placeholder="Select Item" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off" value="${escapeHtml(itemName)}"><input type="hidden" name="itemid[]" value="${escapeHtml(itemId)}"><input type="hidden" name="inwardProductId[]" value="${escapeHtml(inwardProductId)}"></td>
+
+                <td><input type="text" name="designNo[]" class="form-control designno${designDisabledCls}" placeholder="Design No" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off" value="${escapeHtml(designNo)}"><input type="hidden" name="designid[]" value="${escapeHtml(designId)}"></td>
+                <td class="text-center"><input type="text" name="colorName[]" class="form-control inward-color-input text-center" placeholder="Color" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off" value="${escapeHtml(colorName)}"><input type="hidden" name="colorInwardIds[]" class="color-id" value="${escapeHtml(colorId)}"></td>
+                <td class="text-center"><input type="text" name="sizeName[]" class="form-control inward-size-input text-center" placeholder="Size" readonly style="cursor: pointer; background-color: #ffffff;" autocomplete="off" value="${escapeHtml(sizeName)}"><input type="hidden" name="sizeInwardIds[]" class="size-id" value="${escapeHtml(sizeId)}"></td>
+
+                <td><input type="text" name="qty[]" class="form-control qty text-center" value="${escapeHtml(qtyVal)}" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"></td>
+                <td><input type="text" name="purcRate[]" class="form-control buy_price decimal-input text-end" value="${purcRateStr}"></td>
+                <td><input type="text" name="amount[]" class="form-control price decimal-input text-end" value="${priceStr}"></td>
+                <td><input type="text" name="disc[]" class="form-control discount_percentage decimal-input text-end" value="${discStr}"></td>
+                <td><input type="text" name="discAmt[]" class="form-control discount_amount decimal-input text-end" value="${discAmtStr}"></td>
+                <td><input type="text" name="netPurcPrice[]" class="form-control netPurcPrice disabledCls decimal-input text-end bg-light" readonly value="${netPurcStr}"></td>
+                <td><input type="text" name="mrp[]" class="form-control mrp disabledCls decimal-input text-end bg-light" readonly value="${mrpStr}"></td>
+                <td><input type="text" name="mark_up[]" class="form-control mark_up disabledCls decimal-input text-end bg-light" readonly value="${markUpStr}"></td>
+                <td><input type="text" name="mark_down[]" class="form-control mark_down disabledCls decimal-input text-end bg-light" readonly value="${markDownStr}"></td>
+                <input type="hidden" name="netPurcRate[]" class="netPurcRate" value="${netPurcRateStr}">
+
+                <td class="position-relative">
+                    <input type="text" name="taxCode[]" class="form-control taxcode" placeholder="Tax Code" value="${escapeHtml(taxCode)}">
+                    <div class="dropdown-taxCode"></div>
+                    <input type="hidden" name="taxCodeId[]" value="${escapeHtml(taxCodeId)}">
+                </td>
+
+                <td class="text-center p-1">
+                    <div class="position-relative d-inline-flex align-items-center w-100" style="min-width: 76px;">
+                        <input type="text" name="sgst[]" class="form-control sgst text-center disabledCls bg-light" readonly style="padding-right: 26px !important; font-weight: 500;" value="${escapeHtml(sgstVal)}">
+                        <span class="position-absolute end-0 me-1.5 cursor-pointer open-item-tax-modal text-dark d-flex align-items-center justify-content-center" role="button" title="{{ __('View Tax Details') }}" style="cursor: pointer; width: 22px; height: 100%; top: 0; z-index: 2;">
+                            <i class="fa-regular fa-circle-question" style="font-size: 15px; color: #1e293b;"></i>
+                        </span>
+                        <input type="hidden" name="sgstId[]" value="${escapeHtml(sgstId)}">
+                    </div>
+                </td>
+                <td class="text-center">
+                    ${deleteBtn}
+                </td>
+            </tr>`;
         }
 
         function editDataLoad(id) {
+            showCustomLoader('center');
             $.ajax({
                 url: `/shop/inward-product/${id}/edit`,
                 type: 'GET',
                 success: function (res) {
+                    if (!res || !res.inwardData) {
+                        toastr.error("Failed to load inward bill data.");
+                        return;
+                    }
+
                     // Header Value Set
                     if(res.inwardData.is_purchase){
                         $('#saveButton').hide();
@@ -808,67 +967,55 @@
                     $('#inward_invoice_id').val(id);
 
                     if (res.inwardData.counter_master_id !== '' && res.inwardData.counter_master_id !== 0) {
-                        $('#day_book_id').val(res.inwardData.counter_master_id).trigger('change.select2');
+                        $('#day_book_id').val(res.inwardData.counter_master_id);
                     } else {
-                        $("#day_book_id").val($("#day_book_id option:first").val()).trigger('change');
-                    }
-
-                    let selectedTaxId = res.inwardData.vat_tax_id;
-                    if (res.inwardData.inward_product && res.inwardData.inward_product.length > 0 && res.inwardData.inward_product[0].vat_tax_id) {
-                        selectedTaxId = res.inwardData.inward_product[0].vat_tax_id;
-                    }
-                    if (selectedTaxId !== '' && selectedTaxId !== 0) {
-                        $('#inward_vat_tax_id').val(selectedTaxId).trigger('change.select2');
-                    } else {
-                        $("#inward_vat_tax_id").val($("#inward_vat_tax_id option:first").val()).trigger('change');
+                        $("#day_book_id").val("{{ $dayBooks->first()?->id ?? 1 }}");
                     }
 
                     $('#inward_voucher_no').val(res.inwardData.inward_voucher_no);
-
                     $('#inward_date').val(res.inwardData.inward_date);
-
                     $('#inward_day_name').val(res.inwardData.inward_day_name);
                     $('#inward_time').val(res.inwardData.inward_time);
                     $('#inward_challan_no').val(res.inwardData.inward_challan_no);
-
                     $('#inward_challan_date').val(res.inwardData.inward_challan_date);
 
                     if (res.inwardData.inward_party_code) {
-                        var itemData = {
-                            id: res.inwardData.inward_party_code,
-                            text: res.inwardData.party_code.accountshortcode,
-                            accName: res.inwardData.party_code.accountName,
-                            accLimit: res.inwardData.party_code.other_info_act_limit,
-                        };
+                        var partyCodeText = res.inwardData.party_code ? res.inwardData.party_code.accountshortcode : res.inwardData.inward_party_code;
+                        var partyNameText = res.inwardData.party_code ? res.inwardData.party_code.accountName : '';
+                        var partyLimitText = res.inwardData.party_code ? res.inwardData.party_code.other_info_act_limit : '0.00';
 
-                        if ($("#inward_party_code").find("option[value='" + itemData.id + "']").length === 0) {
-                            var partyCodeOption = new Option(itemData.text, itemData.id, true, true);
-                            $("#inward_party_code").append(partyCodeOption).trigger('change');
-                        } else {
-                            $("#inward_party_code").val(itemData.id).trigger('change');
+                        $("#inward_party_code_display").val(partyCodeText);
+                        $("#inward_party_code").empty().append(new Option(partyCodeText, res.inwardData.inward_party_code, true, true)).val(res.inwardData.inward_party_code);
+                        $("#inward_party_name").val(partyNameText);
+                        $("#inward_party_limit").val(partyLimitText);
+                        if (res.inwardData.party_code) {
+                            $("#inward_party_state_id").val(res.inwardData.party_code.state_id || '');
+                            $("#inward_party_state_name").val(res.inwardData.party_code.state ? res.inwardData.party_code.state.name : '');
                         }
                     }
 
-                    $('#inward_party_name').val(res.inwardData.party_code.accountName);
-                    $('#inward_total').val(res.inwardData.inward_total);
-                    $('#inward_party_limit').val(res.inwardData.inward_party_limit);
+                    $('#inward_total').val(parseFloat(res.inwardData.inward_total || 0).toFixed(2));
 
-                    // Table View
-
+                    // Table View - High performance single batch render
                     let products = res.inwardData.inward_product;
-
-                    products.forEach((product, index) => {
-                        createRow(); // 👈 new row create
-                        fillRowData(product, index + 1); // 👈 row number pass
-                    });
+                    if (Array.isArray(products) && products.length > 0) {
+                        let rowsHtml = '';
+                        for (let i = 0; i < products.length; i++) {
+                            rowsHtml += buildInwardRowHtml(products[i], i + 1);
+                        }
+                        $('#inwardProductTable tbody').html(rowsHtml);
+                    } else {
+                        $('#inwardProductTable tbody').empty();
+                        window.createRow(true);
+                    }
 
                     // Footer Value Set
                     $('#inward_acc_credit_day').val(res.inwardData.inward_credit_day);
 
-                    if (res.inwardData.inward_acc_purchaser) {
+                    if (res.inwardData.inward_acc_purchaser && res.inwardData.purchaser) {
                         var purchaserData = {
                             id: res.inwardData.inward_acc_purchaser,
-                            text: res.inwardData.purchaser.name + ' - ' + res.inwardData.purchaser.last_name,
+                            text: (res.inwardData.purchaser.name || '') + ' - ' + (res.inwardData.purchaser.last_name || ''),
                         };
 
                         if ($("#inward_acc_purchaser").find("option[value='" + purchaserData.id + "']").length === 0) {
@@ -879,7 +1026,7 @@
                         }
                     }
 
-                    if (res.inwardData.season_id) {
+                    if (res.inwardData.season_id && res.inwardData.season) {
                         var seasonData = {
                             id: res.inwardData.season_id,
                             text: res.inwardData.season.name,
@@ -893,10 +1040,10 @@
                         }
                     }
 
-                    if (res.inwardData.agent_id) {
+                    if (res.inwardData.agent_id && res.inwardData.agent) {
                         var agentData = {
                             id: res.inwardData.agent_id,
-                            text: res.inwardData.agent.code + ' - ' + res.inwardData.agent.name,
+                            text: (res.inwardData.agent.code || '') + ' - ' + (res.inwardData.agent.name || ''),
                         };
 
                         if ($("#inward_acc_agent").find("option[value='" + agentData.id + "']").length === 0) {
@@ -907,7 +1054,7 @@
                         }
                     }
 
-                    if (res.inwardData.transport_id) {
+                    if (res.inwardData.transport_id && res.inwardData.transport) {
                         var transportData = {
                             id: res.inwardData.transport_id,
                             text: res.inwardData.transport.name,
@@ -921,7 +1068,7 @@
                         }
                     }
 
-                    if (res.inwardData.delivery_by_id) {
+                    if (res.inwardData.delivery_by_id && res.inwardData.delivery_by) {
                         var deliveryByData = {
                             id: res.inwardData.delivery_by_id,
                             text: res.inwardData.delivery_by.name,
@@ -935,20 +1082,38 @@
                         }
                     }
 
-                    $('#inward_acc_lr_no').val(res.inwardData.inward_acc_lr_no);
+                    $('#cash_or_credit').val(res.inwardData.cash_or_credit || 'Credit');
+                    $('#bank_cash_discount_percent').val(parseFloat(res.inwardData.bank_cash_discount_percent || 0).toFixed(2));
+                    $('#inward_acc_lr_no').val(res.inwardData.inward_acc_lr_no || '');
+                    $('#inward_acc_lr_date').val(res.inwardData.inward_acc_lr_date || '');
+                    $('#inward_acc_remark').val(res.inwardData.inward_acc_remark || '');
 
-                    $('#inward_acc_lr_date').val(res.inwardData.inward_acc_lr_date);
+                    $('#bill_discount_percent').val(parseFloat(res.inwardData.bill_discount_percent || 0).toFixed(2));
+                    $('#bill_discount_amount').val(parseFloat(res.inwardData.bill_discount_amount || 0).toFixed(2));
+                    $('#cash_discount_percent').val(parseFloat(res.inwardData.cash_discount_percent || 0).toFixed(2));
+                    $('#cash_discount_amount').val(parseFloat(res.inwardData.cash_discount_amount || 0).toFixed(2));
+                    $('#agent_commission_percent').val(parseFloat(res.inwardData.agent_commission_percent || 0).toFixed(2));
+                    $('#agent_commission_amount').val(parseFloat(res.inwardData.agent_commission_amount || 0).toFixed(2));
+                    $('#expense_amount').val(parseFloat(res.inwardData.expense_amount || 0).toFixed(2));
+                    $('#other_amount').val(parseFloat(res.inwardData.other_amount || 0).toFixed(2));
+                    $('#inward_bill_remark').val(res.inwardData.inward_bill_remark || '');
 
-                    $('#inward_acc_remark').val(res.inwardData.inward_acc_remark);
-                    $('#inward_acc_gst_amount').val(res.inwardData.inward_acc_gst_amount);
-                    $('#inward_acc_net_amount').val(res.inwardData.inward_acc_net_amount);
-                    $('#inward_acc_freight_amount').val(res.inwardData.inward_acc_freight_amount);
-                    $('#inward_acc_parcel_amount').val(res.inwardData.inward_acc_parcel_amount);
-                    $('#inward_acc_amt_with_gst').val(res.inwardData.inward_acc_amt_with_gst);
+                    $('#inward_acc_gst_amount').val(parseFloat(res.inwardData.inward_acc_gst_amount || 0).toFixed(2));
+                    $('#inward_acc_net_amount').val(parseFloat(res.inwardData.inward_acc_net_amount || 0).toFixed(2));
+                    $('#inward_acc_freight_amount').val(parseFloat(res.inwardData.inward_acc_freight_amount || 0).toFixed(2));
+
+                    if (window.calculateNetPurcRateSum) {
+                        window.calculateNetPurcRateSum();
+                    }
 
                 },
                 error: function () {
                     toastr.error("Failed to load item data.");
+                },
+                complete: function () {
+                    setTimeout(function () {
+                        HoldOn.close();
+                    }, 50);
                 }
             });
         }
@@ -985,72 +1150,86 @@
             });
         });
 
-        function fillRowData(product, sl) {
+        function fillRowData(product, sl, calculateSum = false) {
 
             let $row = $(`#inwardProductTable tbody tr[data-sl="${sl}"]`);
+            if (!$row.length) {
+                $row = $('#inwardProductTable tbody tr').eq(sl - 1);
+            }
+            if (!$row.length) {
+                $row = $('#inwardProductTable tbody tr:last');
+            }
 
             // ---------- BASIC INPUTS ----------
+            let buyPrice = parseFloat(product.buy_price) || 0;
+            let price = parseFloat(product.price) || 0;
+            let disc = parseFloat(product.discount_price) || 0;
+            let discAmt = (buyPrice * disc) / 100;
+            let netPurc = product.net_purc_price !== null && product.net_purc_price !== undefined ? parseFloat(product.net_purc_price) : (buyPrice - discAmt);
+            let mrp = parseFloat(product.mrp) || 0;
+            let markUp = parseFloat(product.mark_up) || 0;
+            let markDown = parseFloat(product.mark_down) || 0;
+            let netPurcRate = parseFloat(product.net_purc_rate) || 0;
+
             $row.find('input[name="inwardProductId[]"]').val(product.id);
             $row.find('input[name="qty[]"]').val(product.quantity);
-            $row.find('input[name="purcRate[]"]').val(product.buy_price);
-            $row.find('input[name="amount[]"]').val(product.price);
-            $row.find('input[name="disc[]"]').val(product.discount_price);
-            $row.find('input[name="mrp[]"]').val(product.mrp);
-            $row.find('input[name="mark_up[]"]').val(product.mark_up);
-            $row.find('input[name="mark_down[]"]').val(product.mark_down);
-            $row.find('input[name="netPurcRate[]"]').val(product.net_purc_rate);
+            $row.find('input[name="purcRate[]"]').val(buyPrice.toFixed(2));
+            $row.find('input[name="amount[]"]').val(price.toFixed(2));
+            $row.find('input[name="disc[]"]').val(disc.toFixed(2));
+            $row.find('input[name="discAmt[]"]').val(discAmt > 0 ? discAmt.toFixed(2) : '0.00');
+            $row.find('input[name="netPurcPrice[]"]').val(netPurc > 0 ? netPurc.toFixed(2) : (buyPrice > 0 ? buyPrice.toFixed(2) : '0.00'));
+            $row.find('input[name="mrp[]"]').val(mrp > 0 ? mrp.toFixed(2) : '0.00');
+            $row.find('input[name="mark_up[]"]').val(markUp.toFixed(2));
+            $row.find('input[name="mark_down[]"]').val(markDown.toFixed(2));
+            $row.find('input[name="netPurcRate[]"]').val(netPurcRate.toFixed(2));
 
             // ---------- ITEM / DESIGN (hidden ids) ----------
-            $row.find('input[name="item[]"]').val(product.products.name).addClass('disabledCls');
+            $row.find('input[name="item[]"]').val(product.products ? product.products.name : '').addClass('disabledCls');
             $row.find('input[name="itemid[]"]').val(product.product_id);
 
-            $row.find('input[name="designNo[]"]').val(product.design_master.design_number).addClass('disabledCls');
-            $row.find('input[name="designid[]"]').val(product.design_master_id);
+            let designNo = product.design_master?.design_number || product.designMaster?.design_number || '';
+            $row.find('input[name="designNo[]"]').val(designNo);
+            if (designNo) {
+                $row.find('input[name="designNo[]"]').addClass('disabledCls');
+            }
+            $row.find('input[name="designid[]"]').val(product.design_master_id || '');
 
             // ---------- TAX ----------
-            $row.find('input[name="taxCode[]"]').val(product.hsn_master.hsn_code);
-            $row.find('input[name="taxCodeId[]"]').val(product.hsn_master_id);
+            let taxCode = product.hsn_master?.hsn_code || product.hsnMaster?.hsn_code || '';
+            $row.find('input[name="taxCode[]"]').val(taxCode);
+            $row.find('input[name="taxCodeId[]"]').val(product.hsn_master_id || '');
 
             // ---------- TAX ----------
-            $row.find('input[name="sgst[]"]').val(product.vat_tax.percentage);
-            $row.find('input[name="sgstId[]"]').val(product.vat_tax_id);
+            let sgstVal = (product.vat_tax && product.vat_tax.percentage !== undefined)
+                ? product.vat_tax.percentage
+                : ((product.vatTax && product.vatTax.percentage !== undefined) ? product.vatTax.percentage : '');
+            $row.find('input[name="sgst[]"]').val(sgstVal);
+            $row.find('input[name="sgstId[]"]').val(product.vat_tax_id || '');
 
             // ---------- COLOR SELECT2 ----------
-            let $colorSelect = $row.find('.colorSelectInward');
+            // ---------- COLOR ----------
+            let firstColor = product.colors && product.colors.length > 0 ? product.colors[0] : null;
+            if (firstColor) {
+                $row.find('input[name="colorName[]"]').val(firstColor.name);
+                $row.find('input[name="colorInwardIds[]"]').val(firstColor.id);
+            } else {
+                $row.find('input[name="colorName[]"]').val('');
+                $row.find('input[name="colorInwardIds[]"]').val('');
+            }
 
-            $colorSelect.empty(); // safety
+            // ---------- SIZE ----------
+            let firstSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : null;
+            if (firstSize) {
+                $row.find('input[name="sizeName[]"]').val(firstSize.name);
+                $row.find('input[name="sizeInwardIds[]"]').val(firstSize.id);
+            } else {
+                $row.find('input[name="sizeName[]"]').val('');
+                $row.find('input[name="sizeInwardIds[]"]').val('');
+            }
 
-            product.colors.forEach(color => {
-                let option = new Option(
-                    color.name,  // text
-                    color.id,    // value
-                    true,        // defaultSelected
-                    true         // selected
-                );
-
-                $colorSelect.append(option);
-            });
-
-            $colorSelect.trigger('change.select2');
-
-            // ---------- SIZE SELECT2 ----------
-            let $sizeSelect = $row.find('.sizeSelectInward');
-
-            $sizeSelect.empty();
-
-            product.sizes.forEach(size => {
-                let option = new Option(
-                    size.name,
-                    size.id,
-                    true,
-                    true
-                );
-
-                $sizeSelect.append(option);
-            });
-
-            $sizeSelect.trigger('change.select2');
-
+            if (calculateSum && typeof window.calculateNetPurcRateSum === 'function') {
+                window.calculateNetPurcRateSum();
+            }
         }
 
         function applyColumnVisibility() {
@@ -1079,14 +1258,28 @@
         });
 
         function refreshInwardList() {
-            let isKachiVal = window.isKachiListActive ? 1 : 0;
-            let searchVal = $('#searchForm input[name="search"]').val() || '';
-            loadInwardList("{{ route('shop.inwardProduct.list') }}", { is_kachi: isKachiVal, search: searchVal });
+            $.ajax({
+                url: "{{ route('shop.inwardProduct.list') }}",
+                type: "GET",
+                success: function (data) {
+                    $("#inwardList").html(data);
+                    applyColumnVisibility();
+                },
+                error: function () {
+                    toastr.error("Failed to refresh list");
+                },
+                complete: function () {
+                    HoldOn.close();
+                }
+            });
         }
 
-        $(document).on('click', '.pagination a, #pagination-links a', function (e) {
+        $(document).on('click', '#pagination-links a, #inwardList .pagination a', function (e) {
             e.preventDefault();
             var url = $(this).attr('href');
+            if (!url || url === '#' || url === 'javascript:void(0)') {
+                return;
+            }
             loadInwardList(url);
         });
 
@@ -1095,27 +1288,22 @@
             applyColumnVisibility();
         });
 
-        // Common function for loading Inward List with mode & search parameters
-        function loadInwardList(url, extraData = {}) {
-            let reqData = extraData || {};
-            if (typeof reqData === 'object' && !('is_kachi' in reqData)) {
-                reqData.is_kachi = window.isKachiListActive ? 1 : 0;
-            }
-            if (typeof reqData === 'object' && !('search' in reqData)) {
-                let sVal = $('#searchForm input[name="search"]').val();
-                if (sVal) reqData.search = sVal;
-            }
-
+        // Common function for inward list pagination
+        function loadInwardList(url) {
+            showCustomLoader('center');
             $.ajax({
                 url: url,
                 type: 'GET',
-                data: reqData,
                 success: function (response) {
                     $('#inwardList').html(response);
                     applyColumnVisibility();
                 },
                 error: function (xhr) {
                     console.log('Error:', xhr.responseText);
+                    toastr.error('Failed to load page');
+                },
+                complete: function () {
+                    HoldOn.close();
                 }
             });
         }
@@ -1124,12 +1312,50 @@
 
             let debounceTimer;
 
+            function executeInwardSearch(search) {
+                clearTimeout(debounceTimer);
+                $.ajax({
+                    url: "{{ route('shop.inwardProduct.list') }}",
+                    type: 'GET',
+                    data: {search: search},
+                    beforeSend: function () {
+                        $('#inwardList tbody').html('<tr><td colspan="10" class="text-center">Loading...</td></tr>');
+                    },
+                    success: function (res) {
+                        $('#inwardList').html(res);
+                        applyColumnVisibility();
+                    },
+                    error: function (err) {
+                        toastr.error('Failed to load data');
+                    }
+                });
+            }
+
+            $(document).on('submit', '#searchForm', function (e) {
+                e.preventDefault();
+                let search = $(this).find('input[name="search"]').val();
+                executeInwardSearch(search);
+                return false;
+            });
+
+            $(document).on('keydown', '#searchForm input[name="search"]', function (e) {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    e.preventDefault();
+                    let search = $(this).val();
+                    executeInwardSearch(search);
+                    return false;
+                }
+            });
+
             $(document).on('keyup', '#searchForm input[name="search"]', function (e) {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    return;
+                }
                 clearTimeout(debounceTimer);
                 let search = $(this).val();
 
                 debounceTimer = setTimeout(function () {
-                    loadInwardList("{{ route('shop.inwardProduct.list') }}", { search: search, is_kachi: window.isKachiListActive ? 1 : 0 });
+                    executeInwardSearch(search);
                 }, 300); // 300ms delay
             });
         });
@@ -1137,7 +1363,34 @@
 
         // Barcode Garnette
         $(document).ready(function () {
+            let currentBarcodeInwardInvoiceId = null;
+
+            function updateModalBarcodeStats() {
+                let totalSelectedBarcodes = 0;
+                let checkedCount = 0;
+                $('.modal-item-check:checked').each(function () {
+                    checkedCount++;
+                    let barcodesCount = parseInt($(this).data('barcodes-count') || 0);
+                    let itemQty = parseInt($(this).data('qty') || 0);
+                    totalSelectedBarcodes += (barcodesCount > 0 ? barcodesCount : itemQty);
+                });
+                $('#selectedBarcodeCount').text(totalSelectedBarcodes > 0 ? totalSelectedBarcodes : checkedCount);
+            }
+
+            $(document).on('change', '#selectAllModalItems', function () {
+                $('.modal-item-check').prop('checked', $(this).is(':checked'));
+                updateModalBarcodeStats();
+            });
+
+            $(document).on('change', '.modal-item-check', function () {
+                let total = $('.modal-item-check').length;
+                let checked = $('.modal-item-check:checked').length;
+                $('#selectAllModalItems').prop('checked', total > 0 && total === checked);
+                updateModalBarcodeStats();
+            });
+
             function inwardProductLoad(id){
+                currentBarcodeInwardInvoiceId = id;
                 $.ajax({
                     url: '{{route('shop.inwardProductByBarcode.productLoad',':id')}}'.replace(':id',id),
                     data: id,
@@ -1225,9 +1478,16 @@
                                 let taxStr = (item.hsn_master ? `<div style="font-size:11.5px;"><span class="text-secondary">HSN:</span> <strong>${item.hsn_master.hsn_code}</strong></div>` : '') + 
                                              (item.vat_tax ? `<div style="font-size:11.5px;" class="mt-0.5"><span class="text-secondary">GST:</span> <strong>${item.vat_tax.percentage}%</strong></div>` : '');
 
-                                console.log(index, item)
                                 rows += `
                              <tr>
+                                 <td class="text-center">
+                                     <input class="form-check-input modal-item-check cursor-pointer" 
+                                            type="checkbox" 
+                                            value="${item.id}" 
+                                            data-barcodes-count="${item.barcodes_count || 0}"
+                                            data-qty="${item.quantity || 0}"
+                                            checked>
+                                 </td>
                                  <td class="text-center text-secondary fw-semibold">${sl++}</td>
                                  <td>
                                      <div class="fw-bold text-dark" style="font-size: 13px;">${item.products?.name || ''}</div>
@@ -1255,15 +1515,133 @@
                             });
 
                             $("#barcodeTableBody").html(rows);
+                            $('#selectAllModalItems').prop('checked', true);
+                            updateModalBarcodeStats();
                             $("#barcode-generate-modal").modal("show");
                         }
                     },
 
                     error: function (xhr) {
-                        toastr.error(xhr.responseJSON?.error || "Failed to delete item");
+                        toastr.error(xhr.responseJSON?.error || "Failed to load barcode items");
                     }
                 });
             }
+
+            // Generate All Barcodes in Modal
+            $(document).on('click', '#btnGenerateAllModalBarcodes', function (e) {
+                e.preventDefault();
+                if (!currentBarcodeInwardInvoiceId) return;
+
+                let btn = $(this);
+                let originalHtml = btn.html();
+
+                let pendingQty = 0;
+                $('.modal-item-check').each(function () {
+                    let qty = parseInt($(this).data('qty') || 0);
+                    let existing = parseInt($(this).data('barcodes-count') || 0);
+                    if (qty > existing) {
+                        pendingQty += (qty - existing);
+                    }
+                });
+
+                if (pendingQty <= 0) {
+                    toastr.info("All barcodes for this bill have already been generated!");
+                    return;
+                }
+
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Generating...');
+                showCustomLoader();
+
+                $.ajax({
+                    url: "{{ route('shop.inwardProduct.generateAllBarcodes', ':id') }}".replace(':id', currentBarcodeInwardInvoiceId),
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function (res) {
+                        btn.prop('disabled', false).html(originalHtml);
+                        HoldOn.close();
+                        if (res.success) {
+                            toastr.success(res.success);
+                            inwardProductLoad(currentBarcodeInwardInvoiceId);
+                        }
+                    },
+                    error: function (xhr) {
+                        btn.prop('disabled', false).html(originalHtml);
+                        HoldOn.close();
+                        toastr.error(xhr.responseJSON?.error || "Failed to generate all barcodes");
+                    }
+                });
+            });
+
+            // Print Barcodes for Checked Items in Modal
+            $(document).on('click', '#btnPrintSelectedModalBarcodes', function (e) {
+                e.preventDefault();
+                if (!currentBarcodeInwardInvoiceId) return;
+
+                let checkedIds = [];
+                let ungeneratedCount = 0;
+
+                $('.modal-item-check:checked').each(function () {
+                    checkedIds.push($(this).val());
+                    let qty = parseInt($(this).data('qty') || 0);
+                    let existing = parseInt($(this).data('barcodes-count') || 0);
+                    if (existing === 0) {
+                        ungeneratedCount++;
+                    }
+                });
+
+                if (checkedIds.length === 0) {
+                    toastr.warning("Please select at least one item to print barcodes.");
+                    return;
+                }
+
+                function executePrint(invoiceId, productIds) {
+                    let form = $('#bulkBarcodePrintForm');
+                    let printUrl = "{{ route('shop.inwardProduct.printMultipleBarcodes', ':id') }}".replace(':id', invoiceId);
+                    form.attr('action', printUrl);
+                    $('#bulk_inward_product_ids').val(productIds.join(','));
+                    form.submit();
+                }
+
+                if (ungeneratedCount > 0) {
+                    Swal.fire({
+                        title: 'Generate Missing Barcodes?',
+                        text: `${ungeneratedCount} selected item(s) do not have barcodes generated yet. Generate them now and print together?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#198754',
+                        cancelButtonColor: '#0d6efd',
+                        confirmButtonText: '<i class="bi bi-cpu me-1"></i> Generate & Print All',
+                        cancelButtonText: '<i class="bi bi-printer me-1"></i> Print Only Generated'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            showCustomLoader();
+                            $.ajax({
+                                url: "{{ route('shop.inwardProduct.generateAllBarcodes', ':id') }}".replace(':id', currentBarcodeInwardInvoiceId),
+                                type: "POST",
+                                data: {
+                                    _token: "{{ csrf_token() }}",
+                                    inward_product_ids: checkedIds
+                                },
+                                success: function (res) {
+                                    HoldOn.close();
+                                    inwardProductLoad(currentBarcodeInwardInvoiceId);
+                                    executePrint(currentBarcodeInwardInvoiceId, checkedIds);
+                                },
+                                error: function (xhr) {
+                                    HoldOn.close();
+                                    toastr.error(xhr.responseJSON?.error || "Failed to generate barcodes");
+                                }
+                            });
+                        } else if (result.dismiss === Swal.DismissReason.cancel) {
+                            executePrint(currentBarcodeInwardInvoiceId, checkedIds);
+                        }
+                    });
+                } else {
+                    executePrint(currentBarcodeInwardInvoiceId, checkedIds);
+                }
+            });
 
             $(document).on('click', '.barcodeGarnette', function () {
                 showCustomLoader();
@@ -1601,7 +1979,7 @@
         });
 
         function escapeHtml(text) {
-            if (!text) return '';
+            if (text === null || text === undefined || text === '') return '';
             return String(text)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")

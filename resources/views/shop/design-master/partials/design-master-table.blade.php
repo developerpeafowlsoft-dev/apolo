@@ -44,11 +44,12 @@
                     {{ ($designMaster->max_stock ?? '') }}
                 </td>
                 <td>
-                    {{ ($designMaster->accountMasters->accountName ?? '') }}
-                    <div class="text-muted">
-                        <span class="badge badge-info rounded-end-pill"> {{ $designMaster->accountMasters->accountshortcode ?? '' }}</span>
-
-                    </div>
+                    {{ $designMaster->accountMasters?->accountName ?? ($designMaster->account_master_name ?: '-') }}
+                    @if($designMaster->accountMasters?->accountshortcode)
+                        <div class="text-muted">
+                            <span class="badge badge-info rounded-end-pill">{{ $designMaster->accountMasters->accountshortcode }}</span>
+                        </div>
+                    @endif
                 </td>
 
                 @hasPermission('shop.designMaster.toggle')

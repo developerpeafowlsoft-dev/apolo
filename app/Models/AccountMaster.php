@@ -64,17 +64,25 @@ class AccountMaster extends Model
         'other_info_delivery_type',
 
         'is_active',
+        'is_party_code',
     ];
 
     protected $casts = [
         'cont_info_send_sms' => 'boolean',
         'cont_info_dndactivate' => 'boolean',
+        'is_party_code' => 'boolean',
     ];
 
     public function scopeActive($query)
     {
-        return $query->where('is_active',1);
+        return $query->where('is_active', 1);
     }
+
+    public function scopePartyCode($query)
+    {
+        return $query->where('is_party_code', 1);
+    }
+
     public function scopeBasicFields($query)
     {
         return $query->select([
@@ -87,7 +95,8 @@ class AccountMaster extends Model
             'contperson',
             'cont_info_mobile1',
             'bank_info_bank_name',
-            'is_active'
+            'is_active',
+            'is_party_code',
         ]);
     }
 

@@ -11,6 +11,8 @@ class DeliveryBy extends Model
 
     protected $table = "delivery_bys";
 
+    protected $guarded = ['id'];
+
     public function scopeIsActive($query)
     {
         return $query->where('is_active',1);

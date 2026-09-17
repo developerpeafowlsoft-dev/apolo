@@ -76,12 +76,17 @@ class ShopRepository extends Repository
             'banner_id' => $banner ? $banner->id : $shop->banner_id,
             'delivery_charge' => $request->delivery_charge ?? 0,
             'address' => $request->address,
+            'country_id' => $request->country_id ?? $shop->country_id,
+            'state_id' => $request->state_id ?? $shop->state_id,
+            'city_id' => $request->city_id ?? $shop->city_id,
             'description' => $request->description,
             'min_order_amount' => $request->min_order_amount ?? $shop->min_order_amount,
             'prefix' => $request->prefix ?? $shop->prefix,
             'opening_time' => $request->opening_time ?? $shop->opening_time,
             'closing_time' => $request->closing_time ?? $shop->closing_time,
             'estimated_delivery_time' => $request->estimated_delivery_time ?? $shop->estimated_delivery_time,
+            'gemini_api_key' => $request->has('gemini_api_key') ? $request->gemini_api_key : $shop->gemini_api_key,
+            'gemini_model' => $request->has('gemini_model') ? $request->gemini_model : ($shop->gemini_model ?? 'gemini-1.5-flash'),
         ]);
 
         return $shop;

@@ -5,64 +5,96 @@ namespace App\Http\Controllers\Shop;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BrandRequest;
 use App\Models\Brand;
+use App\Repositories\BrandRepository;
+use Illuminate\Http\Request;
 
 class BrandController extends Controller
 {
     /**
      * Display a listing of the brands.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $rootShop = generaleSetting('rootShop');
-        $shop = generaleSetting('shop');
+        $search = $request->search ?? null;
+        $user = auth()->user();
+        $currentShopId = $user?->shop?->id ?? $user?->myShop?->id ?? $user?->shop_id;
+        $shop = $user?->shop ?? $user?->myShop ?? ($currentShopId ? \App\Models\Shop::find($currentShopId) : null);
 
-        // Get brands (created by Super Admin / Root Shop or by current Shop)
-        $brands = Brand::where(function ($query) use ($rootShop, $shop) {
-                $query->where('shop_id', $shop?->id)
-                      ->orWhere('shop_id', $rootShop?->id)
-                      ->orWhereNull('shop_id');
+        $query = $shop ? $shop->brands() : Brand::whereRaw('1 = 0');
+
+        // Get brands belonging to current shop
+        $brands = $query
+            ->when($search, function ($query) use ($search) {
+                return $query->where('name', 'like', '%' . $search . '%');
             })
-            ->with('shop')
-            ->orderByDesc('id')
+            ->latest('id')
             ->paginate(20)
             ->withQueryString();
 
-        return view('shop.brand.index', compact('brands', 'rootShop', 'shop'));
+        return view('shop.brand.index', compact('brands', 'search', 'currentShopId'));
     }
 
     /**
-     * Store a new brand created from Shop side.
+     * store a new brand
      */
     public function store(BrandRequest $request)
     {
-        $shop = generaleSetting('shop');
-
-        $brand = Brand::create([
-            'name' => $request->name,
-            'is_active' => true,
-            'shop_id' => $shop?->id,
-        ]);
-
-        if ($request->wantsJson() || $request->ajax()) {
-            return response()->json([
-                'status' => true,
-                'message' => __('Brand created successfully'),
-                'brand' => $brand,
-            ]);
-        }
+        BrandRepository::storeByRequest($request);
 
         return to_route('shop.brand.index')->withSuccess(__('Brand created successfully'));
     }
 
     /**
-     * Toggle brand status.
+     * update a brand
+     */
+    public function update(BrandRequest $request, Brand $brand)
+    {
+        $user = auth()->user();
+        $currentShopId = $user?->shop?->id ?? $user?->myShop?->id ?? $user?->shop_id;
+
+        if (! $currentShopId || ! $brand->isOwnedByShop($currentShopId)) {
+            abort(403, __('Unauthorized action. Super Admin-created brands cannot be edited by shop.'));
+        }
+
+        BrandRepository::updateByRequest($request, $brand);
+
+        return to_route('shop.brand.index')->withSuccess(__('Brand updated successfully'));
+    }
+
+    /**
+     * status toggle a brand
      */
     public function statusToggle(Brand $brand)
     {
+        $user = auth()->user();
+        $currentShopId = $user?->shop?->id ?? $user?->myShop?->id ?? $user?->shop_id;
+
+        if (! $currentShopId || ! $brand->isOwnedByShop($currentShopId)) {
+            abort(403, __('Unauthorized action. Super Admin-created brands cannot be modified by shop.'));
+        }
+
         $brand->update([
-            'is_active' => !$brand->is_active,
+            'is_active' => ! $brand->is_active,
         ]);
 
         return to_route('shop.brand.index')->withSuccess(__('Brand status updated'));
+    }
+
+    /**
+     * delete a brand (Shop can only delete brands created and owned by that same shop)
+     */
+    public function destroy(Brand $brand)
+    {
+        $user = auth()->user();
+        $currentShopId = $user?->shop?->id ?? $user?->myShop?->id ?? $user?->shop_id;
+
+        if (! $currentShopId || ! $brand->isOwnedByShop($currentShopId)) {
+            abort(403, __('Unauthorized action. Super Admin-created brands cannot be deleted by shop.'));
+        }
+
+        $brand->translations()->delete();
+        $brand->delete();
+
+        return to_route('shop.brand.index')->withSuccess(__('Brand deleted successfully'));
     }
 }

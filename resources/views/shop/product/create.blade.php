@@ -11,8 +11,12 @@
     <form action="{{ route('shop.product.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
 
-        <div class="pb-2 fz-18 mt-3">
-            {{ __('Product Info') }}
+        <div class="d-flex align-items-center justify-content-between pb-2 mt-3">
+            <div class="fz-18">{{ __('Product Info') }}</div>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1 d-flex align-items-center gap-1.5 shadow-2xs" id="btn_open_ai_modal" style="font-size: 11.5px; font-weight: 600;">
+                <i class="bi bi-stars text-warning fs-6"></i>
+                <span>{{ __('AI Data Generator') }}</span>
+            </button>
         </div>
         <div class="card">
             <div class="card-body">
@@ -23,12 +27,17 @@
                 </div>
 
                 <div class="mt-3">
-                    <label for="">
-                        {{ __('Short Description') }}
-                        <span class="text-danger">*</span>
-                    </label>
-                    <textarea required name="short_description" class="form-control @error('short_description') is-invalid @enderror"
-                        rows="2" placeholder="Enter short description">{{ old('short_description') }}</textarea>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label for="" class="m-0">
+                            {{ __('Short Description') }}
+                            <span class="text-danger">*</span>
+                        </label>
+                        <small class="text-muted" id="create_short_desc_counter" style="font-size: 11px;">
+                            {{ mb_strlen(old('short_description') ?? '') }} / 191
+                        </small>
+                    </div>
+                    <textarea required name="short_description" id="create_short_description" maxlength="191" class="form-control @error('short_description') is-invalid @enderror"
+                        rows="2" placeholder="Enter short description" oninput="$('#create_short_desc_counter').text(this.value.length + ' / 191')">{{ old('short_description') }}</textarea>
                     @error('short_description')
                         <p class="text text-danger m-0">{{ $message }}</p>
                     @enderror
@@ -257,16 +266,19 @@
                 <div class="row mb-3">
                     <div class="col-12">
                         <div class="card card-body h-100">
-                            <div class="mb-2">
-                                <h5>
+                            <div class="mb-2 d-flex align-items-center justify-content-between">
+                                <h5 class="m-0">
                                     {{ __('Thumbnail') }}
                                     <span class="text-primary">{{ __('(Ratio 1:1 (500 x 500 px))') }}</span>
                                     <span class="text-danger">*</span>
                                 </h5>
-                                @error('thumbnail')
-                                    <p class="text-danger">{{ $message }}</p>
-                                @enderror
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1.5 shadow-2xs fw-semibold" style="font-size: 12px;" data-bs-toggle="modal" data-bs-target="#aiImageStudioModal">
+                                    <i class="bi bi-stars text-primary"></i> {{ __('AI Image Studio') }}
+                                </button>
                             </div>
+                            @error('thumbnail')
+                                <p class="text-danger mt-1">{{ $message }}</p>
+                            @enderror
 
                             <label for="thumbnail" class="additionThumbnail">
                                 <img src="https://placehold.co/500x500/f1f5f9/png" id="preview" alt=""
@@ -449,6 +461,9 @@
         </div>
 
     </form>
+
+    @include('shop.product.ai-modal')
+    @include('shop.product.ai-image-modal')
 @endsection
 @push('css')
     <style>

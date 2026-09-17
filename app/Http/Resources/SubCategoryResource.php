@@ -21,6 +21,8 @@ class SubCategoryResource extends JsonResource
             'id' => $this->id ?? null,
             'name' => $translation ? $translation->name : ($this->name ?? null),
             'thumbnail' => $this->thumbnail ?? null,
+            'inward_products_count' => (int) ($this->inward_products_count ?? 0),
+            'online_products_count' => (int) ($this->online_products_count ?? 0),
         ];
     }
 }

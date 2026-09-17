@@ -398,7 +398,7 @@ class POSController extends Controller
         $inwardProduct = $barcodeRecord->inwardProduct;
         $product = $barcodeRecord->product;
 
-        $rate = (float)($barcodeRecord->mrp ?? $inwardProduct->price ?? 0);
+        $rate = (float)($barcodeRecord->mrp ?? $inwardProduct->mrp ?? $product->mrp ?? $product->price ?? 0);
         $hsnMaster = $inwardProduct->hsnMaster ?? $product->hsnMaster ?? null;
 
         $taxPercentage = 0;
@@ -1061,17 +1061,11 @@ class POSController extends Controller
                     ->where('is_active', 1)
                     ->first();
                 
-                $counterId = $request->get('counter_id');
-                $matchingCounterIds = \App\Services\POS\POSHistoryService::resolveMatchingCounterIds($counterId);
-
                 // 1. Today
                 $todayStart = now()->startOfDay();
                 $todayEnd = now()->endOfDay();
                 $todayReturns = \App\Models\POSReturn::where('shop_id', $shop->id)
                     ->whereBetween('created_at', [$todayStart, $todayEnd]);
-                if (!empty($matchingCounterIds)) {
-                    $todayReturns->whereIn('counter_id', $matchingCounterIds);
-                }
                 $statTodayAmt = (float)$todayReturns->sum('total_amount');
                 $statTodayCount = (int)$todayReturns->count();
 
@@ -1080,9 +1074,6 @@ class POSController extends Controller
                 $weekEnd = now()->endOfWeek();
                 $weekReturns = \App\Models\POSReturn::where('shop_id', $shop->id)
                     ->whereBetween('created_at', [$weekStart, $weekEnd]);
-                if (!empty($matchingCounterIds)) {
-                    $weekReturns->whereIn('counter_id', $matchingCounterIds);
-                }
                 $statWeekAmt = (float)$weekReturns->sum('total_amount');
                 $statWeekCount = (int)$weekReturns->count();
 
@@ -1091,9 +1082,6 @@ class POSController extends Controller
                 $monthEnd = now()->endOfMonth();
                 $monthReturns = \App\Models\POSReturn::where('shop_id', $shop->id)
                     ->whereBetween('created_at', [$monthStart, $monthEnd]);
-                if (!empty($matchingCounterIds)) {
-                    $monthReturns->whereIn('counter_id', $matchingCounterIds);
-                }
                 $statMonthAmt = (float)$monthReturns->sum('total_amount');
                 $statMonthCount = (int)$monthReturns->count();
 
@@ -1102,18 +1090,12 @@ class POSController extends Controller
                 if ($financialYear) {
                     $yearReturns->whereBetween('created_at', [$financialYear->start_date . ' 00:00:00', $financialYear->end_date . ' 23:59:59']);
                 }
-                if (!empty($matchingCounterIds)) {
-                    $yearReturns->whereIn('counter_id', $matchingCounterIds);
-                }
                 $statYearAmt = (float)$yearReturns->sum('total_amount');
                 $statYearCount = (int)$yearReturns->count();
 
                 // Fetch returned products
-                $query = \App\Models\POSReturnProduct::whereHas('returnHeader', function($q) use ($shop, $matchingCounterIds) {
+                $query = \App\Models\POSReturnProduct::whereHas('returnHeader', function($q) use ($shop) {
                     $q->where('shop_id', $shop->id);
-                    if (!empty($matchingCounterIds)) {
-                        $q->whereIn('counter_id', $matchingCounterIds);
-                    }
                 })->with(['returnHeader.originalOrder', 'product', 'returnHeader.customer.user', 'returnHeader.cashier']);
 
                 if ($request->filled('invoice_no')) {

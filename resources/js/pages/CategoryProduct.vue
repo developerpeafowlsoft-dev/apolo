@@ -243,7 +243,7 @@
                                                     <option value="" selected>
                                                         {{ $t("Select Category") }}
                                                     </option>
-                                                    <option v-for="category in master.categories" :key="category.id"
+                                                    <option v-for="category in heroCategories" :key="category.id"
                                                         :value="category.id">
                                                         {{ $t(category.name) }}
                                                     </option>
@@ -368,6 +368,10 @@ const scrollSubcategories = (direction) => {
         behavior: 'smooth'
     });
 };
+
+const heroCategories = computed(() => {
+    return (master.categories || []).filter(c => Boolean(c.show_in_hero));
+});
 
 const categoryName = computed(() => {
     const cat = master.categories?.find(c => c.id == route.params.slug);

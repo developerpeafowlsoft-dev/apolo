@@ -493,51 +493,7 @@ class OrderController extends Controller
 
     public function downloadInvoice($id)
     {
-        $order = Order::findOrFail($id);
-
-        $orderCode = '#'.$order->prefix.$order->order_code;
-
-        $qrCode = new EndroidQrCode($orderCode);
-        $qrCode->setSize(100);
-
-        $writer = new PngWriter;
-        $qrCodeImage = $writer->write($qrCode)->getDataUri();
-
-        // pdf config
-        $defaultConfig = (new ConfigVariables)->getDefaults();
-        $fontDirs = $defaultConfig['fontDir'];
-
-        $defaultFontConfig = (new FontVariables)->getDefaults();
-        $fontData = $defaultFontConfig['fontdata'];
-
-        $fontData['kalpurush'] = [
-            'R' => 'kalpurush.ttf',
-        ];
-
-        $paperSize = 'A4';
-
-        $mPdf = new Mpdf([
-            'mode' => 'UTF-8',
-            'margin_left' => 0,
-            'margin_right' => 0,
-            'margin_top' => 0,
-            'margin_bottom' => 0,
-            'autoScriptToLang' => true,
-            'autoLangToFont' => true,
-            'tempDir' => storage_path('app/public/mpdf_tmp'),
-            'fontDir' => array_merge($fontDirs, [public_path('fonts')]),
-            'fontdata' => $fontData,
-            'format' => $paperSize,
-        ]);
-
-        $view = view('PDF.invoice', compact('order', 'qrCodeImage'))->render();
-        $mPdf->WriteHTML($view);
-
-        // Output the PDF as a download
-        return $mPdf->Output('invoice-'.$order->prefix.$order->order_code.'.pdf', 'D');
-
-        // Output the PDF as a stream
-        // return $mPdf->Output('invoice-' . $order->prefix . $order->order_code . '.pdf', 'I');
+        return $this->paymentSlip($id);
     }
 
     public function paymentSlip($id)
@@ -545,10 +501,10 @@ class OrderController extends Controller
         $order = Order::with(['products.hsnMaster.subHsn', 'customer.user', 'address'])->findOrFail($id);
         $generaleSetting = generaleSetting('setting');
 
-        $orderCode = '#' . $order->prefix . $order->order_code;
+        $invoiceUrl = route('shop.pos.invoice', $order->uuid ?? $order->id);
         $qrCodeImage = null;
         try {
-            $qrCode = new \Endroid\QrCode\QrCode($orderCode);
+            $qrCode = new \Endroid\QrCode\QrCode($invoiceUrl);
             $qrCode->setSize(80);
             $writer = new \Endroid\QrCode\Writer\PngWriter;
             $qrCodeImage = $writer->write($qrCode)->getDataUri();

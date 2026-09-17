@@ -177,7 +177,6 @@
                 $("#btnSubmit").text("Submit");
                 $("#generateShortCode").show();
                 modelItemMasterDataLoad();
-                $('#item_short_name').val('');
 
                 generateItemMasterCode();
 
@@ -199,7 +198,6 @@
                                 console.log(res);
 
                                 $('#name').val(res.itemMaster.name);
-                                $('#item_short_name').val(res.itemMaster.item_short_name || '');
                                 $('#slug').text(res.itemMaster.slug);
                                 $('#brand_id').val(res.itemMaster.brand_id).trigger('change');
                                 $('#code').val(res.itemMaster.code).trigger('change');

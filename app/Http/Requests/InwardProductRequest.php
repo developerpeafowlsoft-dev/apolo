@@ -22,7 +22,7 @@ class InwardProductRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'invoiceData.inward_vat_tax_id' => 'required|exists:vat_taxes,id',
+            'invoiceData.inward_vat_tax_id' => 'nullable',
             'invoiceData.inward_voucher_no' => 'required',
             'invoiceData.inward_date' => 'required|date',
             'invoiceData.inward_party_code' => 'required|exists:account_masters,id',
@@ -35,6 +35,8 @@ class InwardProductRequest extends FormRequest
             'rows.*.item' => 'required',
             'rows.*.designNo' => 'required',
             'rows.*.qty' => 'required|numeric|min:1',
+            'rows.*.purcRate' => 'nullable|numeric|min:0',
+            'rows.*.netPurcPrice' => 'nullable|numeric|min:0',
         ];
     }
 }

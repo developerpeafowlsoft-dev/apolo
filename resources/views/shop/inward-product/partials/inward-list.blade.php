@@ -78,12 +78,7 @@
                     
                     <!-- Voucher / Bill Info -->
                     <td class="col-voucher">
-                        <div class="d-flex align-items-center gap-1">
-                            <span class="fw-semibold text-primary">{{ $inwardList->inward_voucher_no ?? '-' }}</span>
-                            @if(!empty($inwardList->is_kachi))
-                                <span class="badge bg-warning text-dark px-1.5 py-0.5" style="font-size: 10px;" title="{{ __('Kachi Entry') }}">Kachi</span>
-                            @endif
-                        </div>
+                        <div class="fw-semibold text-primary">{{ $inwardList->inward_voucher_no ?? '-' }}</div>
                         <small class="text-muted font-monospace d-block" style="font-size: 11px;">
                             {{ (!empty($inwardList->inward_date) ? $inwardList->inward_date->format('d M, Y') : '-') }}
                         </small>

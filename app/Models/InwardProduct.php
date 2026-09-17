@@ -49,5 +49,10 @@ class InwardProduct extends Model
         return $this->hasMany(ProductBarcode::class, 'inward_product_id','id');
     }
 
+    public function productBarcode()
+    {
+        return $this->hasMany(ProductBarcode::class, 'inward_product_id','id');
+    }
+
 
 }

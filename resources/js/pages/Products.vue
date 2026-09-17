@@ -191,7 +191,7 @@
                                                     <option value="" selected>
                                                         {{ $t("Select Category") }}
                                                     </option>
-                                                    <option v-for="category in master.categories" :key="category.id"
+                                                    <option v-for="category in heroCategories" :key="category.id"
                                                         :value="category.id">
                                                         {{ category.name }}
                                                     </option>
@@ -296,6 +296,9 @@ import SkeletonLoader from "../components/SkeletonLoader.vue";
 const priceRange = ref([0, 1000]);
 
 const master = useMaster();
+const heroCategories = computed(() => {
+    return (master.categories || []).filter(c => Boolean(c.show_in_hero));
+});
 const isLoading = ref(true);
 
 onMounted(() => {

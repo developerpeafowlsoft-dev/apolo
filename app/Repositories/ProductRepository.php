@@ -5,6 +5,7 @@ namespace App\Repositories;
 use Abedin\Maker\Repositories\Repository;
 use App\Http\Requests\ItemMasterRequest;
 use App\Http\Requests\ProductRequest;
+use App\Models\InwardProduct;
 use App\Models\Media;
 use App\Models\Product;
 use App\Models\ProductTranslation;
@@ -94,15 +95,19 @@ class ProductRepository extends Repository
             'brand_id' => $request->brand,
             'unit_id' => $request->unit,
             'price' => $request->price,
-            'discount_price' => $request->discount_price,
+            'mrp' => $request->mrp ?? $request->price,
+            'online_discount_percent' => $request->online_discount_percent ?? 0,
+            'discount_price' => ($request->online_discount_percent > 0 && $request->price > 0)
+                ? round($request->price - ($request->price * $request->online_discount_percent / 100), 2)
+                : ($request->discount_price ?? 0),
             'quantity' => $request->quantity ?? 0,
             'min_order_quantity' => $request->min_order_quantity ?? 1,
             'media_id' => $thumbnail->id,
             'code' => $request->code,
             'buy_price' => $request->buy_price ?? 0,
-            'is_active' => $isAdmin ? true : $approve,
+            'is_active' => false, // Status becomes active after view product by shop admin
             'is_new' => true,
-            'is_approve' => $isAdmin ? true : $approve,
+            'is_approve' => true, // No super admin approval required
             'video_id' => $videoMedia ? $videoMedia->id : null,
             'meta_title' => $request->meta_title,
             'meta_description' => $request->meta_description,
@@ -210,16 +215,20 @@ class ProductRepository extends Repository
             'height' => $request->height,
             'weight' => $request->weight,
             'price' => $request->price,
-            'discount_price' => $request->discount_price,
+            'mrp' => $request->mrp ?? $product->mrp ?? $request->price,
+            'online_discount_percent' => $request->online_discount_percent ?? 0,
+            'discount_price' => ($request->online_discount_percent > 0 && ($product->mrp ?: $request->price) > 0)
+                ? round(($product->mrp ?: $request->price) - (($product->mrp ?: $request->price) * $request->online_discount_percent / 100), 2)
+                : ($request->discount_price ?? 0),
             'quantity' => $request->quantity ?? 0,
             'min_order_quantity' => $request->min_order_quantity ?? 1,
             'media_id' => $thumbnail ? $thumbnail->id : null,
             'code' => $request->code,
             'buy_price' => $request->buy_price ?? 0,
-            'is_active' => $isAdmin ? true : $approve,
+            'is_active' => (bool)($product->is_active ?? false),
             'is_new' => false,
             'is_update_product' => true,
-            'is_approve' => $isAdmin ? true : $approve,
+            'is_approve' => true, // No super admin approval required
             'video_id' => $videoMedia ? $videoMedia->id : null,
             'meta_title' => $request->meta_title,
             'meta_description' => $request->meta_description,
@@ -286,6 +295,23 @@ class ProductRepository extends Repository
             }
 
             self::updatePreviousThumbnail($request->previousThumbnail);
+        }
+
+        if ($request->has('variant_online_discount') && is_array($request->variant_online_discount)) {
+            foreach ($request->variant_online_discount as $inwardProdId => $discPercent) {
+                $disc = max(0, min(99.99, (float) ($discPercent ?? 0)));
+                InwardProduct::where('id', $inwardProdId)->update([
+                    'online_discount_percent' => $disc,
+                ]);
+            }
+        }
+
+        if ($request->has('variant_sell_online') && is_array($request->variant_sell_online)) {
+            foreach ($request->variant_sell_online as $inwardProdId => $isOnline) {
+                InwardProduct::where('id', $inwardProdId)->update([
+                    'is_online_product' => (int) $isOnline ? 1 : 0,
+                ]);
+            }
         }
 
         return $product;
@@ -514,9 +540,9 @@ class ProductRepository extends Repository
             'quantity' => $data['stock_quantity'] ?? 1,
             'min_order_quantity' => 1,
             'media_id' => $media,
-            'is_active' => $isAdmin ? true : $approve,
+            'is_active' => false,
             'is_new' => true,
-            'is_approve' => $isAdmin ? true : $approve,
+            'is_approve' => true, // No super admin approval required
             'code' => $data['sku'] ?? random_int(100000, 999999),
         ]);
 
@@ -635,7 +661,6 @@ class ProductRepository extends Repository
         $product = self::create([
             'shop_id' => $shop?->id,
             'name' => $request->name,
-            'item_short_name' => $request->item_short_name,
             'slug' => $request->slug,
             'brand_id' => $request->brand_id,
             'code' => $request->code,
@@ -747,7 +772,6 @@ class ProductRepository extends Repository
 //            'meta_keywords' => $keywords ? Str::limit($keywords, 200, '') : null,
 
             'name' => $request->name,
-            'item_short_name' => $request->item_short_name,
             'slug' => $request->slug,
             'brand_id' => $request->brand_id,
             'code' => $request->code,

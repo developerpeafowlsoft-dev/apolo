@@ -24,7 +24,7 @@
 
                     <PopoverPanel class="absolute pb-6 left-0 right-0 z-30 mt-2 flex main-container">
                         <PopoverButton as="div" class="w-full p-5 sm:p-6 bg-white shadow-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-3.5 sm:gap-4 rounded-2xl">
-                            <div v-for="category in master.categories" :key="category.id" class="w-full">
+                            <div v-for="category in heroCategories" :key="category.id" class="w-full">
                                 <MenuCategory :category="category" @update:click="hiddenPopover" />
                             </div>
                         </PopoverButton>
@@ -119,6 +119,10 @@ const formattedMenus = computed(() => {
         }
     }
     return list;
+});
+
+const heroCategories = computed(() => {
+    return (master.categories || []).filter(c => Boolean(c.show_in_hero));
 });
 
 const appStore = () => {

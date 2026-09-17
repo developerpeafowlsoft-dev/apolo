@@ -9,6 +9,8 @@ class Transport extends Model
 {
     use HasFactory;
 
+    protected $guarded = ['id'];
+
     public function scopeIsActive($query)
     {
         return $query->where('is_active',1);

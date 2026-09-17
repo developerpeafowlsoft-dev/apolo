@@ -368,7 +368,7 @@ const AuthStore = useAuth();
 const basketStore = useBasketStore();
 const master = useMaster();
 
-const showProductItems = ref(false);
+const showProductItems = ref(true);
 const note = ref('');
 
 /*

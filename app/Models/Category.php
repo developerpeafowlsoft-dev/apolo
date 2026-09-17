@@ -46,11 +46,6 @@ class Category extends Model
         return $this->belongsToMany(Shop::class, 'shop_categories');
     }
 
-    public function shop(): BelongsTo
-    {
-        return $this->belongsTo(Shop::class, 'shop_id');
-    }
-
     /**
      * Scopes a query to only include active records.
      *
@@ -60,6 +55,54 @@ class Category extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 1);
+    }
+
+    /**
+     * Scopes a query to only include categories enabled for hero section.
+     */
+    public function scopeInHero($query)
+    {
+        return $query->where('show_in_hero', 1);
+    }
+
+    /**
+     * Get the user who created this category.
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the number of inward product items associated with this category.
+     */
+    public function getInwardProductsCountAttribute($value)
+    {
+        if ($value !== null) {
+            return (int) $value;
+        }
+
+        return (int) \Illuminate\Support\Facades\DB::table('inward_products')
+            ->join('product_categories', 'inward_products.product_id', '=', 'product_categories.product_id')
+            ->where('product_categories.category_id', $this->id)
+            ->count();
+    }
+
+    /**
+     * Get the number of active online products associated with this category.
+     */
+    public function getOnlineProductsCountAttribute($value)
+    {
+        if ($value !== null) {
+            return (int) $value;
+        }
+
+        return (int) \Illuminate\Support\Facades\DB::table('products')
+            ->join('product_categories', 'products.id', '=', 'product_categories.product_id')
+            ->where('product_categories.category_id', $this->id)
+            ->where('products.is_online_product', 1)
+            ->where('products.is_active', 1)
+            ->count();
     }
 
     /**
